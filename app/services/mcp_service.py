@@ -127,8 +127,6 @@ class MCPClient:
         # Run sections sequentially (MCP servers often not thread-safe)
         for section, method in sections.items():
             await self._collect_section(section, method)
-        
-        print(f"MCP Members: {self.members}")
 
         return self.members
     
@@ -170,4 +168,46 @@ class MCPClient:
                 "input": arguments,
                 "error": repr(e),
                 "traceback": traceback.format_exc(),
+                "error": repr(e),
+                "traceback": traceback.format_exc(),
             }
+
+    def format_tools_for_llm(self, tools_list: list) -> str:
+        """
+        Convert list of tool dictionaries into a clear, natural language string 
+        for LLM prompts.
+        """
+        if not tools_list:
+            return "No tools available."
+
+        formatted_output = "AVAILABLE FUNCTIONS:\n"
+        
+        for tool in tools_list:
+            name = tool.get("name")
+            description = tool.get("description", "").strip()
+            input_schema = tool.get("input_schema", {})
+            properties = input_schema.get("properties", {})
+            required = input_schema.get("required", [])
+
+            formatted_output += f"Function: {name}\n"
+            formatted_output += f"Description: {description}\n"
+            formatted_output += "Arguments:\n"
+
+            if not properties:
+                formatted_output += "  - None\n"
+            
+            for arg_name, arg_details in properties.items():
+                arg_type = arg_details.get("type", "unknown")
+                # Handle Enums
+                enum_values = arg_details.get("enum", [])
+                
+                req_marker = "(REQUIRED)" if arg_name in required else "(Optional)"
+                
+                formatted_output += f"  - {arg_name} {req_marker}: {arg_type}"
+                
+                if enum_values:
+                    formatted_output += f" [Allowed: {', '.join(map(str, enum_values))}]"
+                
+                formatted_output += "\n"
+
+        return formatted_output

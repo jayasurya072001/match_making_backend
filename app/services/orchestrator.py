@@ -208,6 +208,7 @@ class OrchestratorService:
             return None, None, None
 
         tool_list = self._mcp_client.get_sections("tools")
+        formatted_tools = self._mcp_client.format_tools_for_llm(tool_list)
         args_system_prompt = get_tool_args_prompt(history, session.current_tool_args)
         
         logger.info(f"Sending for tool")
@@ -218,7 +219,7 @@ class OrchestratorService:
             message=query,
             system_prompt=args_system_prompt,
             conversation_history=history,
-            tool_list=tool_list,
+            tool_list=formatted_tools,
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
