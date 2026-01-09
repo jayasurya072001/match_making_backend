@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+motor
+redis
+aiokafka
+sse-starlette
+httpx
+aiohttp
+insightface
+opencv-python
+numpy
+mcp
+python-dotenv
