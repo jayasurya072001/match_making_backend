@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     KAFKA_RESPONSE_TOPIC: str = "test_chat_response"
     KAFKA_STATUS_TOPIC: str = "test_chat_status"
     LOG_LEVEL: str = "INFO"
+    MCP_SERVER_SCRIPT: str = "app/mcp/smrit_mcp_service.py"
 
     class Config:
         env_file = ".env"

@@ -1,113 +1,72 @@
-from typing import Any
+from typing import Any, List, Dict
+
+def format_history_for_prompt(history: List[Dict]) -> str:
+    """
+    Formats conversation history into a clear text block.
+    """
+    if not history:
+        return "No history available."
+        
+    formatted = []
+    for msg in history:
+        role = msg.get("role", "unknown").capitalize()
+        content = msg.get("content", "")
+        # Handle tool calls/results if needed, though usually standard chat is text
+        if role == "Tool":
+            name = msg.get("name", "unknown")
+            args = msg.get("args", "")
+            formatted.append(f"Tool ({name}) Call: {args}")
+        elif role == "Assistant" and not content:
+            # Maybe a tool call step (already handled above if role is tool, 
+            # but sometimes assistant output is the tool call request)
+             pass
+        else:
+            formatted.append(f"{role}: {content}")
+            
+    return "\n".join(formatted)
 
 
-def get_tool_args_prompt(user_history: Any = None, current_tool_args: Any = None):
+def get_tool_args_prompt(current_tool_args: Any = None, tools_str: str = "", history_str: str = ""):
     return f"""
         You are a STRICT MCP tool argument extractor.
 
         A TOOL CALL IS REQUIRED.
-        
-        INSTRUCTIONS DO NOT OMIT OR SKIP THIS STEP.:
-            -VALID TOOLS (DO NOT INVENT TOOLS)
-            -You MUST choose exactly ONE of the following tools:
-            -YOU MUST OUTPUT EXACTLY ONE JSON OBJECT.
-            -ANY TEXT BEFORE OR AFTER THE JSON IS INVALID.
-            -DO NOT EXPLAIN YOUR REASONING.
-            -DO NOT REPEAT THE INPUT.
-            -DO NOT SHOW INTERMEDIATE STEPS.
 
+        AVAILABLE TOOLS:
+        {tools_str}
 
-        1. search_profiles
-        - Used for visual, attribute-based, location-based, or filter-based searches.
-        - This tool SUPPORTS persistent arguments across turns.
-
-        2. search_person_by_name
-        - Used ONLY when the user provides a person's name.
-        - This tool is STATELESS.
-
-        NAME PRIORITY RULE (VERY IMPORTANT)
-        - If the user mentions a specific person name
-        (e.g., "Adithi", "Rahul", "John"),
-        YOU MUST use `search_person_by_name`.
-        - Even if the user also asks for:
-        - details
-        - photos
-        - more information
+        NAME PRIORITY RULE
+        - If the user mentions a specific person name (e.g., "Adithi", "Rahul"), YOU MUST use `search_person_by_name`.
         - DO NOT use `search_profiles` when a name is present.
 
-        STATE PERSISTENCE RULE (CRITICAL)
-        - ONLY `search_profiles` supports argument persistence.
-        - `current_tool_args` ALWAYS refers ONLY to `search_profiles`.
-        - `search_person_by_name` NEVER uses previous arguments.
+        YOUR ROLE:
+        Your job is to produce a MINIMAL, SPARSE, and CORRECT tool call based ONLY on the LATEST user query.
 
-        When using `search_person_by_name`:
-        - IGNORE `current_tool_args` completely.
-        - START from an EMPTY object {{}}.
-        - DO NOT merge or reuse any previous filters.
+        SOURCES OF TRUTH
+        1. The LATEST user message is the ONLY source of truth.
+        2. Extract ONLY the filters explicitly mentioned in the LATEST message.
+        3. DO NOT look at previous turns. DO NOT merge constraints.
+        4. DO NOT re-state existing filters.
 
-        When using `search_profiles`:
-        - START with `current_tool_args` as the BASELINE.
-        - Merge new or changed attributes according to the merging rules below.
-
-        YOUR ROLE
-        Your job is to produce a MINIMAL, SPARSE, and CORRECT tool call.
-
-        You must:
-        - Select the correct tool
-        - Merge filters ONLY when using `search_profiles`
-        - Return STRUCTURED arguments that EXACTLY match the selected tool’s schema
-
-        MERGING RULES (CRITICAL — search_profiles ONLY)
-        
-        1. If `current_tool_args` contains any fields:
-            - You MUST COPY ALL existing fields into the new `tool_args` FIRST.
-        2. After copying the baseline:
-            - If the user mentions a NEW attribute → ADD it.
-            - If the user CHANGES an existing attribute → OVERWRITE ONLY that field.
-        3. NEVER drop, omit, or re-derive an existing field
-        unless the user explicitly asks to remove or change it.
-        4. If `current_tool_args` is empty:
-            - Start from an EMPTY object {{}}.
-        5. Keep context across turns ONLY for `search_profiles`.
-        7. If user asks like show more matches or next page, If any filters are present in current_tool_args, keep them as is and just keep on increasing the page number by 1.
-
-        ATTRIBUTE EXTRACTION RULES (CRITICAL)
-        - ONLY extract attributes that exist in the selected tool’s input schema.
-        - If a concept DOES NOT EXIST in the schema
-        (e.g., "good looking", "beautiful", "hot", "attractive"),
-        IGNORE IT COMPLETELY.
-        - DO NOT invent new fields.
-        - DO NOT convert unsupported concepts into query strings.
+        EXTRACTION RULES
+        1. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
+        2. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
+        3. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null}}.
+        4. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
 
         INTENT NORMALIZATION
         - "girl", "girls", "woman", "women", "lady", "ladies" → gender="female"
         - "man", "men", "guy", "guys", "boy", "boys" → gender="male"
 
-        STRICT OUTPUT RULES (MANDATORY)
+        STRICT OUTPUT RULES
         - ALWAYS return JSON ONLY.
-        - `tool_args` MUST be a JSON OBJECT (dictionary).
-        - NEVER return arrays, strings, or key=value pairs.
-        - DO NOT include null, empty, or undefined values.
-        - The output MUST be directly usable by the MCP tool.
-        - The output MUST be PARSEABLE by a JSON parser.
-        - DO NOT include explanations, comments, or extra text.
-        
-        STRICT JSON FORMAT RULE
-        - Use DOUBLE QUOTES ONLY.
-        - Single quotes (') are INVALID.
-        - This is NOT Python.
+        - `tool_args` MUST be a dictionary.
+        - OMIT any field not present in the LATEST query.
+        - DO NOT include empty strings or defaults.
 
-
-        INVALID OUTPUT EXAMPLES (NEVER DO THIS)
-        - "tool_args": ["gender=female", "location=Bangalore"]
-        - "tool_args": ["query=good looking girls"]
-        - "selected_tool": "ImageSearchTool"
-
-        CURRENT TOOL ARGS (search_profiles BASELINE ONLY)
-
-        {current_tool_args if current_tool_args else "{}"}
-
-        If you include ANY text outside the JSON object, the output is INVALID.
+        INVALID OUTPUT EXAMPLES
+        ❌ "tool_args": ["gender=female"]
+        ❌ "tool_args": {{ ...all previous filters... }}
 
         OUTPUT FORMAT (JSON ONLY)
         {{
@@ -115,13 +74,16 @@ def get_tool_args_prompt(user_history: Any = None, current_tool_args: Any = None
         "selected_tool": "search_profiles | search_person_by_name",
         "tool_args": {{
             "key": "value"
+            }}
         }}
-        }}
+
+        CONVERSATION HISTORY:
+        {history_str}
         """
 
 
 
-def get_tool_check_prompt(user_history: Any = None):
+def get_tool_check_prompt(history_str: str = ""):
     return f"""
         You are a routing decision engine.
 
@@ -153,9 +115,6 @@ def get_tool_check_prompt(user_history: Any = None):
         If the user request CANNOT be answered without querying profile data,
         you MUST return tool_required = true.
 
-        User Conversation History (for context only):
-        {user_history if user_history else "No user history available."}
-
         EXAMPLES:
 
         User: "girls with curly hair"
@@ -175,6 +134,9 @@ def get_tool_check_prompt(user_history: Any = None):
         {{
         "tool_required": true | false
         }}
+
+        CONVERSATION HISTORY:
+        {history_str}
         """
 
 def get_tool_system_prompt():
@@ -251,7 +213,6 @@ def get_summary_update_prompt():
     INPUTS PROVIDED:
     1. Current Session Summary (JSON)
     2. Last Assistant Answer (for context only)
-    3. New Tool Args (may be empty or partial)
 
     YOUR TASK:
     Update and return the Session Summary JSON.
@@ -264,18 +225,7 @@ def get_summary_update_prompt():
     - Do NOT add transient or conversational statements
     - Keep this list short and meaningful
 
-    2. current_tool_args:
-    - Treat this as the ACTIVE SEARCH STATE
-    - Merge New Tool Args into existing ones
-    - Overwrite values if the user changed a filter
-    - Add values if the user added a filter
-    - RESET this field ONLY if the user clearly started a new, unrelated search
-    - NEVER include empty values ("", null, [], {})
-    - This are the only fields you MUST use or update
-    (fields): ONLY
-    - image_url, location, distance, filters, k, page, gender, age_group, ethnicity, hair_color, hair_style, face_shape, head_hair, beard, mustache, eye_color, emotion, fore_head_height, eyewear, headwear, eyebrow
-
-    3. user_details:
+    2. user_details:
     - Store only facts about the user (e.g., name, self-declared info)
     - Store user details if user mentions or updates them
     - Do NOT store preferences here
@@ -288,8 +238,8 @@ def get_summary_update_prompt():
     - Return the updated Summary JSON
     """
 
-def get_default_system_prompt():
-    return """
+def get_default_system_prompt(history_str: str = "", tool_result_str: str = None, session_summary: Any = None):
+    base_prompt = """
         You are a friendly, conversational assistant with access to profile matches.
         You think and respond like a real human matchmaker chatting in real time.
         You are NOT explaining what you would say.
@@ -333,6 +283,7 @@ def get_default_system_prompt():
             - Stay optimistic and encouraging
             - Suggest relaxing or tweaking criteria naturally
             - Ask one simple follow-up question
+            - Also dont say like I found few matches, instead suggest users to try with different filters
 
         3 WHEN THE USER IS NOT SEARCHING:
             - Respond like normal conversation
@@ -361,3 +312,13 @@ def get_default_system_prompt():
         Make the user feel like they’re chatting with a thoughtful, relaxed matchmaker
         who’s actively helping — friendly, human, and easy to talk to.
         """
+        
+    if session_summary and session_summary.important_points:
+         base_prompt += f"\n\nImportant Points: {session_summary.important_points}\n User Details: {session_summary.user_details}\n"
+
+    base_prompt += f"\n\nCONVERSATION HISTORY:\n{history_str}\n"
+    
+    if tool_result_str:
+        base_prompt += f"\n\nTOOL RESULT:\n{tool_result_str}\n"
+
+    return base_prompt

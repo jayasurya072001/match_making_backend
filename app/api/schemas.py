@@ -82,10 +82,7 @@ class LLMRequest(BaseModel):
     step: str  # check_tool_required | get_tool_args | summarize | custom
     message: Optional[str] = None
     system_prompt: Optional[str] = None
-    conversation_history: Optional[Any] = None
-    tool_list: Optional[Any] = None
-    tool_input: Optional[Any] = None
-    tool_result: Optional[Any] = None
+    json_response: Optional[bool] = False
     response_topic: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
@@ -161,6 +158,5 @@ class ChatRequestBody(BaseModel):
 class SessionSummary(BaseModel):
     user_id: str
     important_points: List[str] = []
-    current_tool_args: Dict[str, Any] = {}
     user_details: List[str] = []
     last_updated: float = 0.0

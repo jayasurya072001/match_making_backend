@@ -13,7 +13,7 @@ from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary
-from app.services.prompts import get_default_system_prompt, get_tool_system_prompt, get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt
+from app.services.prompts import get_default_system_prompt, get_tool_system_prompt, get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt, format_history_for_prompt
 from app.services.mcp_service import MCPClient
 from app.utils.random import generate_random_id, deep_clean_tool_args
 
@@ -21,7 +21,7 @@ from app.utils.random import generate_random_id, deep_clean_tool_args
 logger = logging.getLogger(__name__)
 
 # Path to our MCP server
-MCP_SERVER_SCRIPT = "/home/ubuntu/match/match_making_backend/app/mcp/smrit_mcp_service.py"
+
 
 FALLBACK_MESSAGES = [
     "I'm having a bit of trouble connecting right now. Could you please try asking that again?",
@@ -75,7 +75,7 @@ class OrchestratorService:
 
     async def init_mcp(self):
         logger.info("MCP Initialization")
-        self._mcp_client = MCPClient(MCP_SERVER_SCRIPT)
+        self._mcp_client = MCPClient(settings.MCP_SERVER_SCRIPT)
         await self._mcp_client.__aenter__()
         await self._mcp_client.fetch_all_members()
         logger.info("MCP Initialization Completed")
@@ -178,14 +178,16 @@ class OrchestratorService:
 
     async def _step_check_tool(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any) -> bool:
         """Step 1: Determine if tool is required."""
-        check_system_prompt = get_tool_check_prompt(history)
-        
+        # Inject History
+        formatted_history = format_history_for_prompt(history)
+        check_system_prompt = get_tool_check_prompt(formatted_history)
+
         llm_req = LLMRequest(
             request_id=request_id,
             step="check_tool_required",
             message=query,
             system_prompt=check_system_prompt,
-            conversation_history=history,
+            json_response=True,
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
@@ -209,8 +211,12 @@ class OrchestratorService:
 
         tool_list = self._mcp_client.get_sections("tools")
         formatted_tools = self._mcp_client.format_tools_for_llm(tool_list)
-        args_system_prompt = get_tool_args_prompt(history, session.current_tool_args)
         
+        formatted_history = format_history_for_prompt(history)
+        
+        # Get Prompt
+        args_system_prompt = get_tool_args_prompt(formatted_tools, formatted_history)
+
         logger.info(f"Sending for tool")
         # Dispatch Request
         llm_req = LLMRequest(
@@ -218,8 +224,7 @@ class OrchestratorService:
             step="get_tool_args",
             message=query,
             system_prompt=args_system_prompt,
-            conversation_history=history,
-            tool_list=formatted_tools,
+            json_response=True,
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
@@ -235,6 +240,8 @@ class OrchestratorService:
 
         selected_tool = resp.get("selected_tool")
         tool_args = resp.get("tool_args", {})
+        logger.info(f"Selected Tool: {selected_tool}")
+        logger.info(f"Tool Args: {tool_args}")
         
         tool_result_str = None
         structured_result = None
@@ -244,14 +251,22 @@ class OrchestratorService:
             try:
                 if isinstance(tool_args, str): tool_args = json.loads(tool_args)
 
-                tool_args['user_id'] = user_id
+                # ----------------------------------------
+                # DETERMINISTIC MERGING LOGIC
+                # ----------------------------------------
+                logger.info(f"Merging tool args")
+                final_tool_args = await self._merge_tool_args(user_id, session_id, selected_tool, tool_args)
+                logger.info(f"Final tool args: {final_tool_args}")
+                # ----------------------------------------
 
-                tool_args = deep_clean_tool_args(tool_args)
+                final_tool_args['user_id'] = user_id
+                final_tool_args = deep_clean_tool_args(final_tool_args)
+                logger.info(f"Final tool args after cleaning: {final_tool_args}")
 
-                logger.info(f"Tool executing {selected_tool} with args {tool_args}")
+                logger.info(f"Tool executing {selected_tool} with args {final_tool_args}")
 
                 # EXECUTE TOOL
-                res_mcp = await self._mcp_client.call_tool(selected_tool, tool_args) 
+                res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args) 
 
                 logger.info(f"Tool Execution Result: {res_mcp}")
                 
@@ -275,7 +290,7 @@ class OrchestratorService:
                 await self.append_history(user_id, {
                     "role": "tool",
                     "name": selected_tool,
-                    "args": tool_args
+                    "args": final_tool_args
                 }, session_id)
                 await self._send_status(request_id, "TOOL_EXECUTED")
                 
@@ -283,21 +298,21 @@ class OrchestratorService:
                 tool_result_str = f"Error: {str(e)}"
                 await self._send_status(request_id, "TOOL_ERROR", {"error": str(e)})
 
-        return tool_result_str, tool_args, structured_result
+        return tool_result_str, final_tool_args if selected_tool else tool_args, structured_result
 
     async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False):
         """Step 3: Generate final answer."""
-        default_prompt = get_default_system_prompt()
-        if session_summary.important_points:
-             default_prompt += f"\n\nImportant Points: {session_summary.important_points}\n User Details: {session_summary.user_details}\n"
+        # Prepare Context
+        formatted_history = format_history_for_prompt(history)
+        
+        default_prompt = get_default_system_prompt(formatted_history, tool_result_str, session_summary)
 
         llm_req = LLMRequest(
             request_id=request_id,
             step="summarize",
             message=query,
             system_prompt=default_prompt,
-            conversation_history=history,
-            tool_result=tool_result_str,
+            json_response=False,
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
@@ -358,7 +373,6 @@ class OrchestratorService:
             input_ctx = f"""
             Current Summary: {summary.model_dump_json()}
             Last Assistant Answer: {answer}
-            New Tool Args: {tool_args}
             """
             
             # 3. Call LLM (using the same Kafka/Response flow is hard because it's async background)
@@ -368,12 +382,13 @@ class OrchestratorService:
             update_req_id = f"SUMMARY-{generate_random_id(user_id)}"
             
             llm_req = LLMRequest(
-               request_id=update_req_id,
-               step="custom",
-               system_prompt=prompt,
-               message=input_ctx,
-               response_topic=settings.KAFKA_RESPONSE_TOPIC,
-               metadata={"user_id": user_id, "type": "session_update", "session_id": session_id}                                                                                                         
+                request_id=update_req_id,
+                step="custom",
+                message=input_ctx,
+                system_prompt=prompt,
+                json_response=True,
+                response_topic=settings.KAFKA_RESPONSE_TOPIC,
+                metadata={"user_id": user_id, "type": "session_update", "session_id": session_id}                                                                                                         
             )
             await self._dispatch_llm_request(llm_req)
             logger.info("Summary Update Dispatched")
@@ -510,5 +525,43 @@ class OrchestratorService:
             tool_required=False,
             error=error_msg
         )
+
+    async def _merge_tool_args(self, user_id: str, session_id: Optional[str], selected_tool: str, new_args: dict) -> dict:
+        """
+        Helper method to merge new tool args with persisted state.
+        Returns the final merged dictionary.
+        Persists the result to Redis immediately.
+        """
+        final_tool_args = new_args.copy()  # Start with what LLM extracted
+
+        if selected_tool == "search_profiles":
+            # 1. Load existing state
+            current_args = await redis_service.get_tool_state(user_id, session_id)
+            
+            # 2. Check for Reset
+            if new_args.get("_reset"):
+                current_args = {}
+                final_tool_args.pop("_reset", None)
+            
+            # 3. Merge Logic
+            # Start with current (baseline)
+            merged = current_args.copy()
+            
+            # Apply updates from LLM (new_args)
+            for k, v in final_tool_args.items():
+                if v is None:
+                    # Explicit removal
+                    merged.pop(k, None)
+                else:
+                    # Update/Add
+                    merged[k] = v
+            
+            final_tool_args = merged
+            
+            # 4. Persist State IMMEDIATELY
+            await redis_service.save_tool_state(user_id, final_tool_args, session_id)
+            logger.info(f"Persisted Tool Args: {final_tool_args}")
+            
+        return final_tool_args
 
 orchestrator_service = OrchestratorService()

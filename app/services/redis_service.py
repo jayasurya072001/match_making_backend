@@ -193,6 +193,20 @@ class RedisService:
         await self.client.delete(key)
         return True
 
+    async def save_tool_state(self, user_id: str, tool_args: dict, session_id: str = None):
+        key = f"tool_state:{user_id}"
+        if session_id:
+            key = f"{key}:{session_id}"
+        await self.client.json().set(key, "$", tool_args)
+
+    async def get_tool_state(self, user_id: str, session_id: str = None) -> dict:
+        key = f"tool_state:{user_id}"
+        if session_id:
+            key = f"{key}:{session_id}"
+        data = await self.client.json().get(key)
+        # return empty dict if None
+        return data if data else {}
+
     async def count_user_profiles(self, user_id: str) -> int:
         # Use RediSearch index info if possible, otherwise keys scan (slow)
         # FT.INFO idx:{user_id} provides "num_docs"
