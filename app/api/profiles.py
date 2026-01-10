@@ -114,7 +114,7 @@ async def search_profiles_by_name(
         return {
             "status": "success",
             "count": len(profiles),
-            "data": profiles,
+            "docs": profiles,
             "query": name
         }
     except Exception as e:

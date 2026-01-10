@@ -21,7 +21,7 @@ from app.utils.random import generate_random_id, deep_clean_tool_args
 logger = logging.getLogger(__name__)
 
 # Path to our MCP server
-MCP_SERVER_SCRIPT = "/home/jayasurya/SmritDB/app/mcp/smrit_mcp_service.py"
+MCP_SERVER_SCRIPT = "/home/ubuntu/match/match_making_backend/app/mcp/smrit_mcp_service.py"
 
 FALLBACK_MESSAGES = [
     "I'm having a bit of trouble connecting right now. Could you please try asking that again?",
@@ -251,14 +251,24 @@ class OrchestratorService:
                 logger.info(f"Tool executing {selected_tool} with args {tool_args}")
 
                 # EXECUTE TOOL
-                res_mcp = await self._mcp_client.call_tool(selected_tool, tool_args)
+                res_mcp = await self._mcp_client.call_tool(selected_tool, tool_args) 
 
                 logger.info(f"Tool Execution Result: {res_mcp}")
                 
                 if isinstance(res_mcp, dict):
                     output = res_mcp.get("output")
-                    if output and hasattr(output, "structuredContent"):
-                        structured_result = output.structuredContent
+                    if output:
+                        # Case 1: MCP returned structured content
+                        if getattr(output, "structuredContent", None):
+                            structured_result = output.structuredContent 
+
+                        # Case 2: MCP returned text content (YOUR CASE)
+                        elif getattr(output, "content", None):
+                            for item in output.content:
+                                if getattr(item, "type", None) == "text":
+                                    structured_result = json.loads(item.text)
+                                    break
+                    
                 tool_result_str = json.dumps(structured_result, default=str)
                 
                 # Append Tool Execution to History

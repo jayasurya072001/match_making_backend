@@ -85,10 +85,10 @@ async def search_profiles(
     
     Args:
         user_id: The ID of the user performing the search
-        image_url: URL of the image to search for
-        location: Optional location filter (e.g., "Bangalore")
-        distance: search radius in km (default: 10)
-        page: pagination page number
+        image_url: Optional URL of the image to search for
+        location: Optional location filter
+        distance: Optional search radius in km (default: 10)
+        page: Optional pagination page number (default: 0) (increase the page number to get more results)
     """
 
     # 1. Construct Filters Dict from flattened args
@@ -176,7 +176,7 @@ async def search_person_by_name(
             )
             response.raise_for_status()
             data = response.json()
-            return data.get("data", [])
+            return data
     
     except httpx.HTTPStatusError as e:
         return f"Error calling API: {e.response.text}"
