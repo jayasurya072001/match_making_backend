@@ -12,11 +12,11 @@ from app.core.config import settings
 from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
-from app.api.schemas import LLMRequest, SessionSummary
+from app.api.schemas import LLMRequest, SessionSummary,SessionType
 from app.services.prompts import get_default_system_prompt, get_tool_system_prompt, get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt
 from app.services.mcp_service import MCPClient
 from app.utils.random import generate_random_id, deep_clean_tool_args
-
+from app.services.blob_storage_service import text_to_audio
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None,session_type:Optional[str]=None) -> str:
         """
         Public API: Spawns the orchestration task.
         """
@@ -130,11 +130,11 @@ class OrchestratorService:
         await self.append_history(user_id, user_msg, session_id)
         
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id,session_type))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None,session_type: Optional[str] = None):
         try:
             logger.info(f"Orchestration started for {request_id}")
             await self._send_status(request_id, "RECEIVED")
@@ -156,7 +156,7 @@ class OrchestratorService:
             # 4. Step 3: Summarize
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required
+                tool_result_str, tool_args, structured_result, session_id, tool_required,session_type
             )
 
         except Exception as e:
@@ -274,7 +274,7 @@ class OrchestratorService:
 
         return tool_result_str, tool_args, structured_result
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False,session_type: Optional[str] = None):
         """Step 3: Generate final answer."""
         default_prompt = get_default_system_prompt()
         if session_summary.important_points:
@@ -296,12 +296,12 @@ class OrchestratorService:
         resp = await self._wait_for_llm(request_id)
         logger.info(f"Step 3 result: Summarize {resp}")
         if resp and resp.get("final_answer"):
-            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required)
+            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required,session_type)
         else:
             await self._send_status(request_id, "NO_SUMMARY")
             await self._handle_error_response(request_id, user_id, session_id, query, "No Summary Generated")
 
-    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None):
+    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None,session_type: Optional[str] = None):
         # Save to history
         await self.append_history(user_id, {"role": "assistant", "content": answer}, session_id)
         # Publish final event (mimic what SSE expects for closure)
@@ -314,6 +314,9 @@ class OrchestratorService:
             "tool_result": structured,
             "source": "orchestrator"
         }
+        if session_type==SessionType.TEXT_TO_SPEECH._value_:
+            voice_id="roshil_voice_id"
+            msg["audio_clip"]=text_to_audio(answer,voice_id)
         await redis_service.publish(f"chat_status:{request_id}", msg)
         logger.info(f"Completed request {request_id}")
         

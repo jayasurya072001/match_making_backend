@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     KAFKA_RESPONSE_TOPIC: str = "test_chat_response"
     KAFKA_STATUS_TOPIC: str = "test_chat_status"
     LOG_LEVEL: str = "INFO"
+    ELEVEN_LABS_API_KEY="sk_b1501d96ada8beb1a995f82d350512f5b70a1d2ba3837d74"
+    BLOB_STORAGE_CONNECTION="DefaultEndpointsProtocol=https;AccountName=mfwstorage1;AccountKey=nlkScjBwt8eg6A3dxg49Vyc2CGOfLYubJTx1lKotq7VQPDkJ0Xgorpxmoy+XnnegaW4WDL+G5cDt+AStlVHHBQ==;EndpointSuffix=core.windows.net"
+    BLOB_STORAGE_CONTAINER="match-audio"
 
     class Config:
         env_file = ".env"
