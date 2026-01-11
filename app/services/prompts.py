@@ -26,7 +26,7 @@ def format_history_for_prompt(history: List[Dict]) -> str:
     return "\n".join(formatted)
 
 
-def get_tool_args_prompt(current_tool_args: Any = None, tools_str: str = "", history_str: str = ""):
+def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
     return f"""
         You are a STRICT MCP tool argument extractor.
 
@@ -34,6 +34,12 @@ def get_tool_args_prompt(current_tool_args: Any = None, tools_str: str = "", his
 
         AVAILABLE TOOLS:
         {tools_str}
+        
+        IMPORTANT POINTS:
+        - You MUST choose ONLY ONE tool per user query.
+        - You MUST NOT combine tools.
+        - Dont create new tools or new arguments.
+        - Map user requests to the EXISTING tools and arguments ONLY.
 
         NAME PRIORITY RULE
         - If the user mentions a specific person name (e.g., "Adithi", "Rahul"), YOU MUST use `search_person_by_name`.

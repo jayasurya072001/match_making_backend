@@ -136,7 +136,7 @@ class OrchestratorService:
 
     async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None):
         try:
-            logger.info(f"Orchestration started for {request_id}")
+            logger.info(f"Orchestration started for {request_id} and user {user_id} and session {session_id}")
             await self._send_status(request_id, "RECEIVED")
             
             # 1. Prepare Context
