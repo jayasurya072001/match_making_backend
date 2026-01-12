@@ -64,6 +64,8 @@ async def search_profiles(
     distance: int | None = 10,
     page: int | None = 0,
     # Flattened Attributes
+    min_age: int | None = None,
+    max_age: int | None = None,
     gender: Optional[Literal["male", "female"]] = None,
     age_group: Optional[Literal["teen", "adult", "senior"]] = None,
     ethnicity: Optional[Literal["white", "black", "asian", "brown"]] = None,
@@ -95,6 +97,8 @@ async def search_profiles(
     # We map local args to the SearchFilters schema structure expected by the API
     attributes_dict = {
         "gender": gender,
+        # We need to construct age filter carefully
+        "age": {"min": min_age, "max": max_age} if (min_age is not None or max_age is not None) else None,
         "age_group": age_group,
         "ethnicity": ethnicity,
         "face_shape": face_shape,

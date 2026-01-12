@@ -34,6 +34,9 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
 
         AVAILABLE TOOLS:
         {tools_str}
+
+        CONVERSATION HISTORY:
+        {history_str}
         
         IMPORTANT POINTS:
         - You MUST choose ONLY ONE tool per user query.
@@ -44,6 +47,13 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
         NAME PRIORITY RULE
         - If the user mentions a specific person name (e.g., "Adithi", "Rahul"), YOU MUST use `search_person_by_name`.
         - DO NOT use `search_profiles` when a name is present.
+        
+        CONTEXT AWARENESS (CRITICAL)
+        - If the user says "ok", "yes", "sure", "do that":
+          - LOOK at the LAST ASSISTANT MESSAGE in `CONVERSATION HISTORY`.
+          - If the assistant suggested a filter (e.g., "try removing age?"), APPLY IT.
+          - Example: Assistant: "No results. Search for all ages?" -> User: "ok" -> Output: {{"min_age": 0, "max_age": 100}}
+          - These are just examples to consider, it applies for other fields as well.
 
         YOUR ROLE:
         Your job is to produce a MINIMAL, SPARSE, and CORRECT tool call based ONLY on the LATEST user query.
@@ -57,12 +67,17 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
         EXTRACTION RULES
         1. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
         2. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        3. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null}}.
+        3. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
         4. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
+        5. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
+           - "25 years old" -> {{"min_age": 25, "max_age": 25}}
+           - "above 20" -> {{"min_age": 20}}
+           - "under 30" -> {{"max_age": 30}}
+           - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
 
         INTENT NORMALIZATION
         - "girl", "girls", "woman", "women", "lady", "ladies" → gender="female"
-        - "man", "men", "guy", "guys", "boy", "boys" → gender="male"
+        - "guy", "man", "men", "guys", "boy", "boys", "male" → gender="male"
 
         STRICT OUTPUT RULES
         - ALWAYS return JSON ONLY.
@@ -82,9 +97,6 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
             "key": "value"
             }}
         }}
-
-        CONVERSATION HISTORY:
-        {history_str}
         """
 
 
@@ -116,6 +128,13 @@ def get_tool_check_prompt(history_str: str = ""):
         - Asks general knowledge questions
         - Asks about how the system works
         - Asks conceptual or explanatory questions without requesting data
+        - Provides AMBIGUOUS or INCOMPLETE input (e.g., "I", "ok", "yes" with no context)
+        - Sentences that do not imply a search intent
+
+        AMBIGUITY RULE (CRITICAL):
+        - If the user sends a single letter (e.g., "I") or unclear phrase:
+          - RETURN `tool_required: false`.
+          - The assistant should ask for clarification.
 
         OVERRIDE RULE (CRITICAL):
         If the user request CANNOT be answered without querying profile data,
@@ -251,6 +270,7 @@ def get_default_system_prompt(history_str: str = "", tool_result_str: str = None
         You are NOT explaining what you would say.
         You are NOT giving examples.
         You are responding DIRECTLY to the user now.
+        Always keep the conversation short and sweet
 
         TONE & STYLE (ABSOLUTE)
 
@@ -296,8 +316,9 @@ def get_default_system_prompt(history_str: str = "", tool_result_str: str = None
             - Ignore tool_result if irrelevant
             - Stay friendly and engaged
 
-        4 WHEN THE USER INTENT IS UNCLEAR:
-            - DO NOT guess or assume
+        4 WHEN THE USER INTENT IS UNCLEAR OR AMBIGUOUS:
+            - If the user sends "I" or nonsense → ASK "Did you mean to search for something?" or "How can I help?"
+            - DO NOT guess
             - Ask ONE short, natural clarification question
             - Keep it conversational, not interrogative
         

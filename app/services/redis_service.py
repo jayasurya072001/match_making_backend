@@ -1,5 +1,5 @@
 import redis.asyncio as redis
-from redis.commands.search.field import TagField, VectorField, GeoField, TextField
+from redis.commands.search.field import TagField, VectorField, GeoField, TextField, NumericField
 from redis.commands.search.index_definition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 from app.core.config import settings
@@ -40,6 +40,9 @@ class RedisService:
                 ),
                 # Geo Location
                 GeoField("$.geo_location", as_name="geo_location"),
+
+                # Numeric Age
+                NumericField("$.age", as_name="age"),
                 
                 # Image Attributes - Flattened Indexing
                 TagField("$.image_attributes.face_shape", as_name="face_shape"),
@@ -106,9 +109,14 @@ class RedisService:
         if filters:
             for field, value in filters.items():
                 if value:
-                     # Simple TAG support: @field:{value}
-                     # Need to sanitize value?
-                     query_parts.append(f"@{field}:{{{value}}}")
+                     if isinstance(value, dict) and ("min" in value or "max" in value):
+                         # Numeric Range: @field:[min max]
+                         min_val = value.get("min", "-inf")
+                         max_val = value.get("max", "+inf")
+                         query_parts.append(f"@{field}:[{min_val} {max_val}]")
+                     else:
+                         # Simple TAG support: @field:{value}
+                         query_parts.append(f"@{field}:{{{value}}}")
         
         # 2. Geo Filter
         if geo_filter:
