@@ -31,42 +31,64 @@ async def chat_request(
 @router.delete("/{user_id}/chat/history", tags=["chat"])
 async def delete_chat_history(
     user_id: str = Path(..., title="The ID of the user"),
+    session_id: str = None
 ):
     """
     Delete conversation history for the user from Redis.
     """
-    await orchestrator_service.delete_history(user_id)
+    await orchestrator_service.delete_history(user_id, session_id)
     return {"status": "success", "message": "Chat history deleted"}
+
+@router.get("/{user_id}/chat/sessions", tags=["chat"])
+async def get_chat_sessions(
+    user_id: str = Path(..., title="The ID of the user"),
+):
+    """
+    Get list of active chat sessions for the user.
+    """
+    return await orchestrator_service.get_all_sessions(user_id)
 
 @router.get("/{user_id}/chat/history", tags=["chat"])
 async def get_chat_history(
     user_id: str = Path(..., title="The ID of the user"),
+    session_id: str = None
 ):
     """
     Get conversation history for the user from Redis.
     """
-    history = await orchestrator_service.get_history(user_id)
+    history = await orchestrator_service.get_history(user_id, session_id)
     return {"history": history}
 
 
 @router.get("/{user_id}/session/summary", tags=["chat"])
 async def get_session_summary(
     user_id: str = Path(..., title="The ID of the user"),
+    session_id: str = None
 ):
     """
     Get the current session summary (memory) for the user.
     """
-    summary = await redis_service.get_session_summary(user_id)
+    summary = await redis_service.get_session_summary(user_id, session_id)
     return summary
+
+@router.get("/{user_id}/session/summaries", tags=["chat"])
+async def get_all_session_summaries(
+    user_id: str = Path(..., title="The ID of the user"),
+):
+    """
+    Get all session summaries for the user.
+    """
+    return await orchestrator_service.get_all_session_summaries(user_id)
 
 @router.delete("/{user_id}/session/summary", tags=["chat"])
 async def delete_session_summary(
     user_id: str = Path(..., title="The ID of the user"),
+    session_id: str = None
 ):
     """
     Clear the session summary for the user.
     """
-    await redis_service.delete_session_summary(user_id)
+    await redis_service.delete_session_summary(user_id, session_id)
     return {"status": "success", "message": "Session summary deleted"}
 
 @router.get("/{user_id}/chat/status/{request_id}", tags=["chat"])

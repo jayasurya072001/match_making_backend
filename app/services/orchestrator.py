@@ -488,6 +488,12 @@ class OrchestratorService:
              key = f"{key}:{session_id}"
         await redis_service.client.delete(key)
 
+    async def get_all_sessions(self, user_id: str) -> List[Dict]:
+        return await redis_service.get_user_chat_sessions(user_id)
+        
+    async def get_all_session_summaries(self, user_id: str) -> List[SessionSummary]:
+        return await redis_service.get_all_session_summaries(user_id)
+
     async def _handle_summary_update(self, data: Dict, session_id: Optional[str] = None):
         try:
             uid = data.get("user_id")

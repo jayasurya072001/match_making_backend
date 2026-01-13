@@ -51,18 +51,20 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
         CONTEXT AWARENESS (CRITICAL)
         - If the user says "ok", "yes", "sure", "do that":
           - LOOK at the LAST ASSISTANT MESSAGE in `CONVERSATION HISTORY`.
-          - If the assistant suggested a filter (e.g., "try removing age?"), APPLY IT.
-          - Example: Assistant: "No results. Search for all ages?" -> User: "ok" -> Output: {{"min_age": 0, "max_age": 100}}
-          - These are just examples to consider, it applies for other fields as well.
+          - If the assistant suggested a filter (e.g., "try removing age?", "how about Bangalore?"), APPLY IT.
+          - Example 1: Assistant: "No results. Search for all ages?" -> User: "ok" -> Output: {{"age_group": null}}
+          - Example 2: Assistant: "Nothing in Delhi. Try Mumbai?" -> User: "yes" -> Output: {{"location": "Mumbai"}}
+          - Example 3: Assistant: "Want to clear filters?" -> User: "sure" -> Output: {{"_reset": true}}
 
         YOUR ROLE:
         Your job is to produce a MINIMAL, SPARSE, and CORRECT tool call based ONLY on the LATEST user query.
 
         SOURCES OF TRUTH
-        1. The LATEST user message is the ONLY source of truth.
-        2. Extract ONLY the filters explicitly mentioned in the LATEST message.
-        3. DO NOT look at previous turns. DO NOT merge constraints.
-        4. DO NOT re-state existing filters.
+        1. The LATEST user message is the PRIMARY source of truth.
+        2. IF the LATEST message is a CONFIRMATION ("ok", "yes"), the PREVIOUS ASSISTANT MESSAGE is the SOURCE of truth.
+        3. Extract ONLY the filters explicitly mentioned (or confirmed).
+        4. DO NOT look at previous turns unless confirming a suggestion.
+        5. DO NOT re-state existing filters.
 
         EXTRACTION RULES
         1. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
@@ -70,10 +72,16 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
         3. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
         4. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
         5. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
-           - "25 years old" -> {{"min_age": 25, "max_age": 25}}
-           - "above 20" -> {{"min_age": 20}}
-           - "under 30" -> {{"max_age": 30}}
-           - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
+            - "25 years old" -> {{"min_age": 25, "max_age": 25}}
+            - "above 20" -> {{"min_age": 20}}
+            - "under 30" -> {{"max_age": 30}}
+            - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
+        6 WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
+            - Keep all existing user filters and preferences unchanged
+            - Increase result depth silently
+            - Respond as if more options are now available
+            - Never mention pagination, limits, page size, or re-querying
+            - Invite light refinement only if it feels natural
 
         INTENT NORMALIZATION
         - "girl", "girls", "woman", "women", "lady", "ladies" → gender="female"
@@ -130,11 +138,13 @@ def get_tool_check_prompt(history_str: str = ""):
         - Asks conceptual or explanatory questions without requesting data
         - Provides AMBIGUOUS or INCOMPLETE input (e.g., "I", "ok", "yes" with no context)
         - Sentences that do not imply a search intent
+        - Provides GIBBERISH or random characters (e.g., "sodij xjcdnjdk")
+        - Provides a VAGUE or BROAD location (e.g., "North India", "Asia", "USA") without a specific city
 
-        AMBIGUITY RULE (CRITICAL):
-        - If the user sends a single letter (e.g., "I") or unclear phrase:
-          - RETURN `tool_required: false`.
-          - The assistant should ask for clarification.
+        CRITICAL REJECTION RULES:
+        1. AMBIGUITY: If input is "I", "Ok" (without previous assistant suggestion), or "Yes" -> RETURN `false`.
+        2. GIBBERISH: If input makes no sense -> RETURN `false`.
+        3. VAGUE LOCATION: If user says "North India" -> RETURN `false`. (Assistant must ask for a specific city).
 
         OVERRIDE RULE (CRITICAL):
         If the user request CANNOT be answered without querying profile data,
@@ -145,13 +155,13 @@ def get_tool_check_prompt(history_str: str = ""):
         User: "girls with curly hair"
         Output: {{ "tool_required": true }}
 
-        User: "find males aged 25"
-        Output: {{ "tool_required": true }}
-
-        User: "hello"
+        User: "North India"
         Output: {{ "tool_required": false }}
 
-        User: "what is curly hair?"
+        User: "sodij xjcdnjdk"
+        Output: {{ "tool_required": false }}
+
+        User: "hello"
         Output: {{ "tool_required": false }}
 
         OUTPUT:
@@ -317,7 +327,8 @@ def get_default_system_prompt(history_str: str = "", tool_result_str: str = None
             - Stay friendly and engaged
 
         4 WHEN THE USER INTENT IS UNCLEAR OR AMBIGUOUS:
-            - If the user sends "I" or nonsense → ASK "Did you mean to search for something?" or "How can I help?"
+            - If the user sends "I" or nonsense/gibberish (e.g., "sodij") → SAY "I didn't quite catch that. Could you say it again?"
+            - If the user sends a BROAD REGION (e.g., "North India") → ASK "Which city would you like to search in?" or "Could you be more specific about the location?"
             - DO NOT guess
             - Ask ONE short, natural clarification question
             - Keep it conversational, not interrogative
@@ -333,6 +344,17 @@ def get_default_system_prompt(history_str: str = "", tool_result_str: str = None
             - Sound apologetic or final
             - Hallucinate people, matches, or details
             - Output anything other than the response itself
+            - Ask the user to wait or be patient
+            - Say or imply you are checking, searching, looking, or fetching
+            - Use phrases like:
+                "let me see"
+                "give me a moment"
+                "checking now"
+                "looking into it"
+                "I’ll find"
+                "I’m searching"
+            - Describe actions you are about to take
+            - Speak in future tense about helping
 
         GOAL:
 

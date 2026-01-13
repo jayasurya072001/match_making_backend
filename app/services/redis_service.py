@@ -244,4 +244,58 @@ class RedisService:
             finally:
                 await pubsub.unsubscribe(channel)
 
+    async def get_user_chat_sessions(self, user_id: str) -> list[dict]:
+        """
+        Scan for chat history keys and return session IDs and message counts.
+        Keys format: chat_history:{user_id} or chat_history:{user_id}:{session_id}
+        """
+        pattern = f"chat_history:{user_id}*"
+        sessions = []
+        
+        # Use SCAN to find keys
+        async for key in self.client.scan_iter(match=pattern):
+            # Parse session_id
+            parts = key.split(":") 
+            # Parts could be ['chat_history', 'userId'] or ['chat_history', 'userId', 'sessionId']
+            
+            session_id = None
+            if len(parts) > 2:
+                session_id = parts[2]
+            
+            # Get count
+            count = await self.client.llen(key)
+            sessions.append({
+                "session_id": session_id,
+                "count": count
+            })
+            
+        return sessions
+
+    async def get_all_session_summaries(self, user_id: str) -> list[SessionSummary]:
+        """
+        Scan for session summary keys and return parsed summaries.
+        Keys format: session_summary:{user_id} or session_summary:{user_id}:{session_id}
+        """
+        pattern = f"session_summary:{user_id}*"
+        summaries = []
+        
+        async for key in self.client.scan_iter(match=pattern):
+            # Parse session_id
+            parts = key.split(":")
+            session_id = None
+            if len(parts) > 2:
+                session_id = parts[2]
+                
+            data = await self.client.get(key)
+            if data:
+                try:
+                    summary = SessionSummary.model_validate_json(data)
+                    # Ensure we attach session_id if not in model? 
+                    # The model might not have session_id field if it was created before. 
+                    # But the requirement is just to return the list.
+                    summaries.append(summary)
+                except:
+                    pass
+        return summaries
+
 redis_service = RedisService()
