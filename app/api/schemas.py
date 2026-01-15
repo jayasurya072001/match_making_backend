@@ -96,6 +96,7 @@ class LLMResponse(BaseModel):
     final_answer: Optional[str] = None
     error: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+    usage: Optional[Dict[str, Any]] = None # {token_count: int, duration: float, ...}
 
 class StatusEvent(BaseModel):
     request_id: str
