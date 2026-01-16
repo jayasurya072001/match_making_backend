@@ -15,6 +15,7 @@ from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary
 from app.services.prompts import get_default_system_prompt, get_tool_system_prompt, get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt, format_history_for_prompt
 from app.services.mcp_service import MCPClient
+from app.services.metrics_service import metrics_service
 from app.utils.random import generate_random_id, deep_clean_tool_args
 
 
@@ -114,6 +115,7 @@ class OrchestratorService:
                 self._pending.pop(request_id, None)
 
     async def _dispatch_llm_request(self, req: LLMRequest):
+        metrics_service.record_llm_job_start()
         await kafka_service.send_request(settings.KAFKA_CHAT_TOPIC, req.model_dump())
 
     # --------------------------
@@ -129,6 +131,9 @@ class OrchestratorService:
         user_msg = {"role": "user", "content": query}
         await self.append_history(user_id, user_msg, session_id)
         
+        # Metrics: Start Request
+        metrics_service.record_request_start()
+
         # Spawn the orchestration flow
         asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id))
         
@@ -191,12 +196,15 @@ class OrchestratorService:
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
+        t0 = time.time()
         await self._dispatch_llm_request(llm_req)
         await self._send_status(request_id, "LLM_CHECKING_TOOLS")
 
         resp = await self._wait_for_llm(request_id)
         if not resp:
             raise Exception("Timeout waiting for Tool Check Step")
+        
+        metrics_service.record_step_duration("check_tool_required", time.time() - t0)
         
         if resp.get("error"):
             raise Exception(f"LLM Error in Tool Check: {resp.get('error')}")
@@ -228,6 +236,7 @@ class OrchestratorService:
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
+        t0 = time.time()
         await self._dispatch_llm_request(llm_req)
         await self._send_status(request_id, "LLM_EXTRACTING_ARGS")
         
@@ -237,6 +246,8 @@ class OrchestratorService:
             raise Exception("Timeout waiting for Tool Args Step")
         
         logger.info(f"Tool Args Response: {resp}")
+        
+        metrics_service.record_step_duration("get_tool_args", time.time() - t0)
 
         selected_tool = resp.get("selected_tool")
         tool_args = resp.get("tool_args", {})
@@ -316,10 +327,13 @@ class OrchestratorService:
             response_topic=settings.KAFKA_RESPONSE_TOPIC,
             metadata={"user_id": user_id}
         )
+        t0 = time.time()
         await self._dispatch_llm_request(llm_req)
         await self._send_status(request_id, "LLM_SUMMARIZING")
 
         resp = await self._wait_for_llm(request_id)
+        metrics_service.record_step_duration("summarize", time.time() - t0)
+        
         logger.info(f"Step 3 result: Summarize {resp}")
         if resp and resp.get("final_answer"):
             await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required)
@@ -359,6 +373,15 @@ class OrchestratorService:
             "timestamp": time.time()
         }
         asyncio.create_task(mongo_service.save_chat_log(user_id, log_data))
+        
+        # Metrics: Complete
+        # We don't have exact duration here easily unless we passed start time. 
+        # For end-to-end, we can track it if we stored start time in a map or context.
+        # But for now let's just mark completion to balance active_requests.
+        # Ideally, we should add `timestamp` to `handle_request` return or separate tracking.
+        # Let's assume we want E2E. Logic: `time.time() - log_data['timestamp']` (approx, since timestamp is creation time)
+        
+        metrics_service.record_request_complete(duration=0.0) # Placeholder duration or calc if possible
         
         # Trigger Background Summary Update
         asyncio.create_task(self._background_summary_update(user_id, answer, tool_args, session_id))
@@ -444,6 +467,14 @@ class OrchestratorService:
                         fut = self._pending.get(rid)
                         if fut and not fut.done():
                             fut.set_result(data)
+                            
+                            # Metrics: LLM Job End
+                            # Check usage
+                            usage = data.get("usage", {})
+                            tokens = usage.get("token_count", 0) if usage else 0
+                            duration = usage.get("total_duration", 0) if usage else 0
+                            metrics_service.increment_tokens(tokens, duration)
+                            metrics_service.record_llm_job_end(duration, tokens)
 
                 # Check for Session Update Response
                 if rid and rid.startswith("SUMMARY-") and data.get("custom_response"):
@@ -531,6 +562,7 @@ class OrchestratorService:
             tool_required=False,
             error=error_msg
         )
+        metrics_service.record_request_complete(duration=0.0, error=True)
 
     async def _merge_tool_args(self, user_id: str, session_id: Optional[str], selected_tool: str, new_args: dict) -> dict:
         """

@@ -62,6 +62,8 @@ async def shutdown_event():
     await orchestrator_service.stop()
 
 app.include_router(router, prefix="/api/v1")
+from app.api.monitoring import router as monitoring_router
+app.include_router(monitoring_router, prefix="/api/v1/monitoring")
 
 @app.get("/")
 async def root():
