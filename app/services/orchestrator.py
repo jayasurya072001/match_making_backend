@@ -13,7 +13,7 @@ from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary
-from app.services.prompts import get_default_system_prompt, get_tool_system_prompt, get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt, format_history_for_prompt
+from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
 from app.utils.random import generate_random_id, deep_clean_tool_args
@@ -140,6 +140,9 @@ class OrchestratorService:
         return request_id
 
     async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None):
+        tool_result_str = ""
+        tool_args = None
+        structured_result = None
         try:
             logger.info(f"Orchestration started for {request_id} and user {user_id} and session {session_id}")
             await self._send_status(request_id, "RECEIVED")
@@ -150,19 +153,35 @@ class OrchestratorService:
             # 2. Step 1: Check Tool Required
             tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
             logger.info(f"Step 1 result: Tool Required {tool_required}")
-            
-            # 3. Step 2: Tool Execution (if needed)
-            tool_result_str, tool_args, structured_result = await self._step_tool_execution(
-                request_id, user_id, query, history, session, tool_required, session_id
-            )
 
-            logger.info(f"Step 2 result: Tool Result {tool_result_str}")
+            decision = tool_required.get("decision") if tool_required else None
+
+            if not decision:
+                logger.warning("Tool decision missing from LLM response")
+
+            elif decision == "tool":
+                tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                    request_id,
+                    user_id,
+                    query,
+                    history,
+                    session,
+                    tool_required,
+                    session_id
+                )
+                logger.info(f"Tool executed successfully")
             
-            # 4. Step 3: Summarize
+            elif decision in ("no_tool", "ask_clarification", "inappropriate_block"):
+                logger.info(f"Decision={decision}, skipping tool execution")
+
+            else:
+                logger.warning(f"Invalid tool decision received: {decision}")
+
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required
+                tool_result_str, tool_args, structured_result, session_id, tool_required, decision
             )
+                
 
         except Exception as e:
             logger.exception(f"Orchestration Error {request_id}: {e}")
@@ -209,7 +228,7 @@ class OrchestratorService:
         if resp.get("error"):
             raise Exception(f"LLM Error in Tool Check: {resp.get('error')}")
 
-        tool_required = resp.get("tool_required", False)
+        tool_required = resp.get("tool_required", "")
         return tool_required
 
     async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, tool_required: bool, session_id: Optional[str] = None):
@@ -311,12 +330,25 @@ class OrchestratorService:
 
         return tool_result_str, final_tool_args if selected_tool else tool_args, structured_result
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
         formatted_history = format_history_for_prompt(history)
-        
-        default_prompt = get_default_system_prompt(formatted_history, tool_result_str, session_summary)
+
+        personality = get_base_prompt()
+
+        if decision == 'ask_clarification':
+            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary)
+        elif decision == 'tool':
+            if structured_result and isinstance(structured_result, dict):
+                is_tool_result_check = len(structured_result.get("docs", [])) > 0
+            else:
+                is_tool_result_check = False
+            default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary)
+        elif decision == 'inappropriate_block':
+            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary)
+        else:
+            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary)
 
         llm_req = LLMRequest(
             request_id=request_id,
@@ -479,7 +511,10 @@ class OrchestratorService:
                 # Check for Session Update Response
                 if rid and rid.startswith("SUMMARY-") and data.get("custom_response"):
                     session_id = data.get("metadata", {}).get("session_id")
-                    await self._handle_summary_update(data.get("custom_response"), session_id)
+                    custom_response = data.get("custom_response")
+                    custom_response['user_id'] = data.get('metadata', {}).get('user_id', None)
+                    custom_response['session_id'] = session_id
+                    await self._handle_summary_update(custom_response, session_id)
 
                 # Check for Pong
                 if data.get("type") == "pong":
@@ -539,7 +574,7 @@ class OrchestratorService:
             new_summary.last_updated = time.time()
 
             await redis_service.save_session_summary(uid, new_summary, session_id)
-            # logger.info(f"Updated Session Summary for {uid}")
+            logger.info(f"Updated Session Summary for {uid}")
 
         except Exception as e:
             logger.error(f"Failed to save session summary: {e}", exc_info=True)
