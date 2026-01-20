@@ -314,6 +314,17 @@ class OrchestratorService:
                                     structured_result = json.loads(item.text)
                                     break
                     
+                    # ----------------------------------------
+                    # AUTO-RESET LOGIC
+                    # ----------------------------------------
+                    if structured_result and isinstance(structured_result, dict):
+                        docs = structured_result.get("docs", [])
+                        if len(docs) == 0:
+                            logger.info("Tool returned 0 results. Auto-resetting persisted tool filters.")
+                            final_tool_args = {}
+                            await redis_service.save_tool_state(user_id, {}, session_id) 
+                    # ----------------------------------------
+
                 tool_result_str = json.dumps(structured_result, default=str)
                 
                 # Append Tool Execution to History
@@ -628,6 +639,24 @@ class OrchestratorService:
                 else:
                     # Update/Add
                     merged[k] = v
+            
+            # 3.5 Check for Filter Changes (Reset Page)
+            # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 0.
+            filter_keys = set(merged.keys()) | set(final_tool_args.keys())
+            filters_changed = False
+            for k in final_tool_args:
+                if k in ["page", "_reset", "user_id"]:
+                    continue
+                # If new arg is different from old arg (or new), it's a change.
+                # Actually, final_tool_args IS the new args from LLM locally.
+                # We need to compare specific keys in 'merged' vs 'current_args' 
+                # BUT 'merged' already has the updates.
+                # Simpler: If new_args has any key that is NOT page/_reset, it implies a filter refinement -> Reset Page.
+                filters_changed = True
+                break
+            
+            if filters_changed:
+                 merged["page"] = 0
             
             final_tool_args = merged
             
