@@ -320,8 +320,9 @@ class OrchestratorService:
         
         tool_result_str = None
         structured_result = None
+        final_tool_args = {}
         
-        if selected_tool:
+        if tool_args:
             await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
             try:
                 if isinstance(tool_args, str): tool_args = json.loads(tool_args)
@@ -404,8 +405,14 @@ class OrchestratorService:
             except Exception as e:
                 tool_result_str = f"Error: {str(e)}"
                 await self._send_status(request_id, "TOOL_ERROR", {"error": str(e)})
+        else:
+            logger.info(f"No tool received from the model due to some reason debug using this {resp}")
+            tool_result_str = None
+            final_tool_args = None
+            structured_result = None
+        return tool_result_str, final_tool_args, structured_result
 
-        return tool_result_str, final_tool_args if selected_tool else tool_args, structured_result
+        
 
     async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None):
         """Step 3: Generate final answer."""
