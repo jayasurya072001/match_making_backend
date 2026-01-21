@@ -26,9 +26,9 @@ def format_history_for_prompt(history: List[Dict]) -> str:
     return "\n".join(formatted)
 
 
-def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
+def get_tool_selection_prompt(tools_str: str = "", history_str: str = ""):
     return f"""
-        You are a STRICT MCP tool argument extractor.
+        You are a STRICT MCP tool selector.
 
         A TOOL CALL IS REQUIRED.
 
@@ -38,26 +38,37 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
         CONVERSATION HISTORY:
         {history_str}
         
+        YOUR ROLE:
+        Analyze the user's latest query and the conversation history to select the MOST APPROPRIATE tool.
+
+        STRICT OUTPUT RULES:
+        - ALWAYS return JSON ONLY.
+        - Return the name of the tool in the "selected_tool" field.
+        - DO NOT explain your choice.
+
+        OUTPUT FORMAT (JSON ONLY):
+        {{
+            "selected_tool": "tool_name"
+        }}
+    """
+
+def get_tool_args_prompt(selected_tool: str, specific_tool_prompt: str, tool_schema: str, history_str: str = ""):
+    return f"""
+        You are a STRICT MCP tool argument extractor for the tool: `{selected_tool}`.
+
+        TOOL SCHEMA:
+        {tool_schema}
+
+        CONVERSATION HISTORY:
+        {history_str}
+        
         IMPORTANT POINTS:
-        - You MUST choose ONLY ONE tool per user query.
-        - You MUST NOT combine tools.
+        - Extract arguments ONLY for the tool `{selected_tool}`.
         - Dont create new tools or new arguments.
         - Map user requests to the EXISTING tools and arguments ONLY.
 
-        NAME PRIORITY RULE
-        - If the user mentions a specific person name (e.g., "Adithi", "Rahul"), YOU MUST use `search_person_by_name`.
-        - DO NOT use `search_profiles` when a name is present.
-        
-        CONTEXT AWARENESS (CRITICAL)
-        - If the user says "ok", "yes", "sure", "do that":
-          - LOOK at the LAST ASSISTANT MESSAGE in `CONVERSATION HISTORY`.
-          - If the assistant suggested a filter (e.g., "try removing age?", "how about Bangalore?"), APPLY IT.
-          - Example 1: Assistant: "No results. Search for all ages?" -> User: "ok" -> Output: {{"age_group": null}}
-          - Example 2: Assistant: "Nothing in Delhi. Try Mumbai?" -> User: "yes" -> Output: {{"location": "Mumbai"}}
-          - Example 3: Assistant: "Want to clear filters?" -> User: "sure" -> Output: {{"_reset": true}}
-
         YOUR ROLE:
-        Your job is to produce a MINIMAL, SPARSE, and CORRECT tool call based ONLY on the LATEST user query.
+        Your job is to produce a MINIMAL, SPARSE, and CORRECT tool call based ONLY on the LATEST user query and relevant history.
 
         SOURCES OF TRUTH
         1. The LATEST user message is the PRIMARY source of truth.
@@ -66,59 +77,22 @@ def get_tool_args_prompt(tools_str: str = "", history_str: str = ""):
         4. DO NOT look at previous turns unless confirming a suggestion.
         5. DO NOT re-state existing filters.
 
-        EXTRACTION RULES
-        1. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
-        2. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        3. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
-        4. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
-        5. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
-            - "25 years old" -> {{"min_age": 25, "max_age": 25}}
-            - "above 20" -> {{"min_age": 20}}
-            - "under 30" -> {{"max_age": 30}}
-            - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
-        6 WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
-            - Keep all existing user filters and preferences unchanged
-            - Increase result depth silently
-            - Respond as if more options are now available
-            - Never mention pagination, limits, page size, or re-querying
-            - Invite light refinement only if it feels natural
+        Tool Instructioin:
+        {specific_tool_prompt}
         
-        PAGINATION RULE:
-            - If user asks for "more", "next", "continue":
-              - Check conversation history for the last tool call.
-              - Output {{"page": (previous_page + 1)}}. 
-              - If no page found, default to {{"page": 1}}.
-        
-        7. Dont Mix the values of one field to another field.
-
-        INTENT NORMALIZATION
-        - "girl", "girls", "woman", "women", "lady", "ladies" → gender="female"
-        - "guy", "man", "men", "guys", "boy", "boys", "male" → gender="male"
-
-        STRICT OUTPUT RULES
-        - ALWAYS return JSON ONLY.
-        - `tool_args` MUST be a dictionary.
-        - OMIT any field not present in the LATEST query.
-        - DO NOT include empty strings or defaults.
-
-        INVALID OUTPUT EXAMPLES
-        ❌ "tool_args": ["gender=female"]
-        ❌ "tool_args": {{ ...all previous filters... }}
 
         OUTPUT FORMAT (JSON ONLY)
         {{
-        "tool_required": true,
-        "selected_tool": "search_profiles | search_person_by_name",
-        "tool_args": {{
-            "key": "value"
+            "tool_args": {{
+                "arg_name": "arg_value"
             }}
         }}
-        """
+    """
 
 def get_summary_update_prompt():
     return """
     You are a background memory updater for a chat session.
-    This is a SYSTEM MAINTENANCE TASK — NOT a conversation.
+    This is a SYSTEM MAINTENANCE TASK - NOT a conversation.
 
     IMPORTANT:
     - Be factual, concise, and deterministic
@@ -176,12 +150,14 @@ def get_tool_check_prompt(history_str: str = ""):
         Use when the user clearly wants to FIND, SEARCH, FILTER, LIST, or REFINE people or profiles
         using stored data.
 
-        2. "ask_clarification"
-        Use when the user shows SEARCH INTENT but the request is INCOMPLETE or TOO VAGUE
-        to run a data query.
-
-        3. "no_tool"
+        2. "no_tool"
         Use when the user is chatting, asking general questions, or the input is invalid.
+
+        3. "inappropriate_block"
+        Use when the user message contains sexual, explicit, or pornographic language
+
+        4. "ask_clarification"
+        Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query.
 
         --------------------------------------------------
         STRICT RULE ORDER (VERY IMPORTANT):
@@ -195,30 +171,22 @@ def get_tool_check_prompt(history_str: str = ""):
 
         --------------------------------------------------
 
-        STEP 2 — INCOMPLETE SEARCH → "ask_clarification"
-        Return "ask_clarification" if:
-        - The user is trying to search for people BUT
-        - Required details are missing or too broad
-        - If the context is not proper even with the coveration history
+        STEP 2 — VALID SEARCH → "tool"
+        Return "tool" if:
+        - The user wants to find/search/list people
+        - AND mentions AT LEAST ONE attribute such as:
+            gender, hair_style, hair_color, age, ethnicity,
+            face, appearance, emotion, or a specific city
 
         Examples:
-        - "North India"
-        - "girls in Asia"
-        - "people in USA"
-        - "find girls" (no attributes)
+            - "curly hair girls" 
+            - "girls above 25" 
+            - "boys with beard" 
+            - "happy looking women" 
 
         --------------------------------------------------
 
-        STEP 3 — VALID SEARCH → "tool"
-        Return "tool" if:
-        - The user asks to find, search, list, or filter people or profiles
-        - The user mentions attributes such as:
-        hair, face, age, gender, ethnicity, location (specific city), appearance
-        - The user refines a previous search (e.g., "only females", "curly hair")
-
-        --------------------------------------------------
-
-        STEP 4 - Inappropriate Block - "inappropriate_block"
+        STEP 3 - Inappropriate Block - "inappropriate_block"
         Return "inappropriate_block" if:
         - The user message contains sexual, explicit, or pornographic language
         - The user objectifies people based on private body parts or sexual traits
@@ -228,16 +196,35 @@ def get_tool_check_prompt(history_str: str = ""):
         - The user requests illegal, exploitative, or harmful content
         - The user uses aggressive profanity directed at the assistant or others
 
+        --------------------------------------------------
+
+        STEP 4 — INCOMPLETE SEARCH → "ask_clarification"
+        Return "ask_clarification" ONLY if:
+        - User shows search intent
+        - AND provides ZERO actionable filters
+
         Examples:
-        - "can you get some girl with big boobs"
-        - "find me call girls"
-        - "fuck off"
-        - "looking for girls just for sex"
+        - "North India"
+        - "girls in Asia"
+        - "people in USA"
+
+        --------------------------------------------------
+
+        Examples:
+            - "can you get some girl with big boobs"
+            - "find me call girls"
+            - "fuck off"
+            - "looking for girls just for sex"
 
         --------------------------------------------------
 
         STEP 5 — DEFAULT → "no_tool"
         All other inputs must return "no_tool".
+
+        OVERRIDE RULE:
+        If the user provides AT LEAST ONE valid searchable attribute
+        (e.g., gender, hair_style, age, appearance, ethnicity),
+        you MUST return "tool" — even if other details are missing.
 
         --------------------------------------------------
         EXAMPLES:
