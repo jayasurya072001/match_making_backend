@@ -53,16 +53,17 @@ tools_specific_promtps = {
     """,
     "search_profiles": """
         EXTRACTION RULES
-        1. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
-        2. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        3. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
-        4. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
-        5. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
+        1. Dont Mix the values of one argument to another argument.
+        2. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
+        3. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
+        4. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
+        5. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
+        6. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
             - "25 years old" -> {{"min_age": 25, "max_age": 25}}
             - "above 20" -> {{"min_age": 20}}
             - "under 30" -> {{"max_age": 30}}
             - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
-        6 WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
+        7. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
             - Keep all existing user filters and preferences unchanged
             - Increase result depth silently
             - Respond as if more options are now available
@@ -74,8 +75,6 @@ tools_specific_promtps = {
               - Check conversation history for the last tool call.
               - Output {{"page": (previous_page + 1)}}. 
               - If no page found, default to {{"page": 1}}.
-        
-        7. Dont Mix the values of one field to another field.
 
         INTENT NORMALIZATION
         - "girl", "girls", "woman", "women", "lady", "ladies" → gender="female"

@@ -359,7 +359,9 @@ class OrchestratorService:
                 logger.info(f"Tool executing {selected_tool} with args {final_tool_args}")
 
                 # EXECUTE TOOL
-                res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args) 
+                res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args)
+
+                logger.info(f"Raw mcp result {res_mcp}")
                 
                 if isinstance(res_mcp, dict):
                     output = res_mcp.get("output")
@@ -388,6 +390,8 @@ class OrchestratorService:
                     # ----------------------------------------
 
                 tool_result_str = json.dumps(structured_result, default=str)
+
+                logger.info(f"Tool result {tool_result_str}")
                 
                 # Append Tool Execution to History
                 await self.append_history(user_id, {

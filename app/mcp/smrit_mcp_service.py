@@ -18,7 +18,7 @@ logger = logging.getLogger("smritdb")
 
 OPENCAGE_API_KEY = "54737ced623247dca150315f0a471adc"
 BASE_URL = "https://api.opencagedata.com/geocode/v1/json"
-API_BASE_URL = "http://localhost:8000/api/v1"
+API_BASE_URL = "http://localhost:8000/api/v1/profiles"
 
 # Initialize FastMCP Server
 mcp = FastMCP("SmritDB Search Service")
@@ -203,7 +203,7 @@ async def search_person_by_name(
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"{API_BASE_URL}/{user_id}/profiles/search_by_name",
+                f"{API_BASE_URL}/{user_id}/search_by_name",
                 params={"name": name, "limit": limit},
                 timeout=30
             )
