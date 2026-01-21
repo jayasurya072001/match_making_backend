@@ -91,6 +91,26 @@ async def delete_session_summary(
     await redis_service.delete_session_summary(user_id, session_id)
     return {"status": "success", "message": "Session summary deleted"}
 
+@router.get("/{user_id}/session/tool_state", tags=["chat"])
+async def get_tool_state(
+    user_id: str = Path(..., title="The ID of the user"),
+    session_id: str = None
+):
+    """
+    Get the current tool state (arguments) for the user.
+    """
+    state = await redis_service.get_tool_state(user_id, session_id)
+    return {"session_id": session_id, "tool_args": state}
+
+@router.get("/{user_id}/session/tool_states", tags=["chat"])
+async def get_all_tool_states(
+    user_id: str = Path(..., title="The ID of the user"),
+):
+    """
+    Get all tool states for the user across sessions.
+    """
+    return await redis_service.get_all_tool_states(user_id)
+
 @router.get("/{user_id}/chat/status/{request_id}", tags=["chat"])
 async def chat_status(
     request_id: str,

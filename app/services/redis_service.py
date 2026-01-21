@@ -302,4 +302,28 @@ class RedisService:
                     pass
         return summaries
 
+    async def get_all_tool_states(self, user_id: str) -> list[dict]:
+        """
+        Scan for tool state keys and return parsed states.
+        Keys format: tool_state:{user_id} or tool_state:{user_id}:{session_id}
+        """
+        pattern = f"tool_state:{user_id}*"
+        states = []
+        
+        async for key in self.client.scan_iter(match=pattern):
+            # Parse session_id
+            parts = key.split(":")
+            session_id = None
+            if len(parts) > 2:
+                session_id = parts[2]
+                
+            data = await self.client.json().get(key)
+            if data:
+                states.append({
+                    "session_id": session_id,
+                    "tool_args": data
+                })
+        return states
+
+
 redis_service = RedisService()
