@@ -622,10 +622,7 @@ class OrchestratorService:
         await redis_service.client.ltrim(key, 0, 4)
 
     async def delete_history(self, user_id: str, session_id: Optional[str] = None):
-        key = f"chat_history:{user_id}"
-        if session_id:
-             key = f"{key}:{session_id}"
-        await redis_service.client.delete(key)
+        await redis_service.delete_history(user_id, session_id)
 
     async def get_all_sessions(self, user_id: str) -> List[Dict]:
         return await redis_service.get_user_chat_sessions(user_id)
