@@ -25,6 +25,31 @@ def format_history_for_prompt(history: List[Dict]) -> str:
             
     return "\n".join(formatted)
 
+def format_user_profile(profile: Dict[str, Any]) -> str:
+    if not profile:
+        return ""
+    
+    lines = []
+    # Basic Info
+    if profile.get("name"): lines.append(f"Name: {profile['name']}")
+    if profile.get("age"): lines.append(f"Age: {profile['age']}")
+    if profile.get("gender"): lines.append(f"Gender: {profile['gender']}")
+    
+    # Location
+    location_parts = []
+    if profile.get("address"): location_parts.append(profile["address"])
+    if profile.get("country"): location_parts.append(profile["country"])
+    if location_parts:
+        lines.append(f"Location: {', '.join(location_parts)}")
+        
+    # Additional Context
+    if profile.get("tags"): lines.append(f"Interests/Tags: {', '.join(profile['tags'])}")
+    
+    if not lines:
+        return ""
+        
+    return "CONNECTED USER PROFILE:\n" + "\n".join(lines)
+
 
 def get_tool_selection_prompt(tools_str: str = "", history_str: str = ""):
     return f"""
@@ -116,6 +141,8 @@ def get_summary_update_prompt():
     - Do NOT add transient or conversational statements
     - Keep this list short and meaningful
     - Do not add abusive points of the user
+    - Do NOT store procedural steps, commands, or confirmation messages (e.g., 'User said yes', 'User wants to search', 'User requested profiles').
+    - ONLY store attributes, preferences, and facts.
 
     2. user_details:
     - Store only facts about the user (e.g., name, self-declared info)
@@ -159,6 +186,9 @@ def get_tool_check_prompt(history_str: str = ""):
         4. "ask_clarification"
         Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query.
 
+        5. "gibberish"
+        Use when the user input is gibberish or random characters.
+
         --------------------------------------------------
         STRICT RULE ORDER (VERY IMPORTANT):
         --------------------------------------------------
@@ -196,20 +226,6 @@ def get_tool_check_prompt(history_str: str = ""):
         - The user requests illegal, exploitative, or harmful content
         - The user uses aggressive profanity directed at the assistant or others
 
-        --------------------------------------------------
-
-        STEP 4 — INCOMPLETE SEARCH → "ask_clarification"
-        Return "ask_clarification" ONLY if:
-        - User shows search intent
-        - AND provides ZERO actionable filters
-
-        Examples:
-        - "North India"
-        - "girls in Asia"
-        - "people in USA"
-
-        --------------------------------------------------
-
         Examples:
             - "can you get some girl with big boobs"
             - "find me call girls"
@@ -218,7 +234,30 @@ def get_tool_check_prompt(history_str: str = ""):
 
         --------------------------------------------------
 
-        STEP 5 — DEFAULT → "no_tool"
+        STEP 4 — INCOMPLETE SEARCH → "ask_clarification"
+        Return "ask_clarification" ONLY if:
+        - User shows search intent
+        - AND provides ZERO actionable filter
+
+        Examples:
+        - "North India"
+        - "girls in Asia"
+        - "people in USA"
+
+        --------------------------------------------------
+
+        STEP 5 - Gibberish - "gibberish"
+        Return "gibberish" if:
+        - The user input is gibberish or random characters
+
+        Examples:
+        - "osicjucbdjbcn",
+        - ".",
+        - "2-0d9nc30948"
+
+        --------------------------------------------------
+
+        STEP 6 — DEFAULT → "no_tool"
         All other inputs must return "no_tool".
 
         OVERRIDE RULE:
@@ -240,7 +279,7 @@ def get_tool_check_prompt(history_str: str = ""):
         Output: {{ "decision": "ask_clarification" }}
 
         User: "sodij xjcdnjdk"
-        Output: {{ "decision": "no_tool" }}
+        Output: {{ "decision": "gibberish" }}
 
         User: "hello"
         Output: {{ "decision": "no_tool" }}
@@ -249,7 +288,7 @@ def get_tool_check_prompt(history_str: str = ""):
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         {{
-        "decision": "tool" | "ask_clarification" | "inappropriate_block" | "no_tool"
+        "decision": "tool" | "ask_clarification" | "inappropriate_block" | "gibberish" | "no_tool"
         }}
 
         --------------------------------------------------
@@ -262,7 +301,8 @@ def get_tool_check_prompt(history_str: str = ""):
 def get_clarification_summary_prompt(
     history_str: str,
     personality: str,
-    session_summary: Any = None
+    session_summary: Any = None,
+    user_profile: Dict[str, Any] = None
 ) -> str:
     prompt = f"""
 {personality}
@@ -303,32 +343,36 @@ ONLY OUTPUT THE CLARIFICATION QUESTION.
 IMPORTANT CONTEXT (use only if relevant):
 {session_summary.important_points}\n User Details: {session_summary.user_details}\n
 """
+    if user_profile:
+        prompt += f"\n{format_user_profile(user_profile)}\n"
+
     return prompt
 
 
 def get_no_tool_summary_prompt(
     history_str: str,
     personality: str,
-    session_summary: Any = None
+    session_summary: Any = None,
+    user_profile: Dict[str, Any] = None
 ) -> str:
     prompt = f"""
 {personality}
 
-ROLE:
-You are a friendly, natural conversational assistant.
-
 TASK:
-Respond to the user's latest message as normal conversation.
+Respond to the user's latest message.
+Keep the user engaging and interested.
 
 CONVERSATION HISTORY:
 {history_str}
 """
-
     if session_summary and session_summary.important_points:
         prompt += f"""
 IMPORTANT CONTEXT (use only if relevant):
 {session_summary.important_points}\n User Details: {session_summary.user_details}\n
 """
+    if user_profile:
+        prompt += f"\n{format_user_profile(user_profile)}\n"
+
     return prompt
 
 
@@ -337,7 +381,8 @@ def get_tool_summary_prompt(
     is_tool_result_check: bool,
     tool_result: str,
     personality: str,
-    session_summary: Any = None
+    session_summary: Any = None,
+    user_profile: Dict[str, Any] = None
 ) -> str:
 
     # Determine the path programmatically
@@ -345,9 +390,11 @@ def get_tool_summary_prompt(
         result_context = """
 You found some matches! Respond positively and encouragingly.
 - Speak at a high level (matchmaker style)
-- Do NOT list profiles, counts, or attributes
-- Casually suggest refining preferences (vibe, location, interests)
-- Ask at most ONE light follow-up question
+- Don't list profiles, counts, or attributes
+- Just announce the results with enthusiasm (e.g., 'Here are some great matches' or 'I found these for you')
+- Do NOT ask to show profiles (they are already shown)
+- Do NOT ask 'Shall we?' or 'Ready to see them?'
+- Ask at most ONE light follow-up question related to refining the search or the next step
 """
     else:  # Empty tool result
         result_context = """
@@ -389,11 +436,19 @@ IMPORTANT CONTEXT (use only if relevant):
 {session_summary.important_points}
 User Details: {session_summary.user_details}
 """
+    if user_profile:
+        prompt += f"\n{format_user_profile(user_profile)}\n"
+
     return prompt
 
 
 
-def get_inappropriate_summary_prompt(history_str: str, personality: str, session_summary: Any = None) -> str:
+def get_inappropriate_summary_prompt(
+    history_str: str, 
+    personality: str, 
+    session_summary: Any = None,
+    user_profile: Dict[str, Any] = None
+) -> str:
     prompt=  f"""
 {personality}
 
@@ -418,6 +473,8 @@ IMPORTANT CONTEXT (use only if relevant):
 {session_summary.important_points}\n User Details: {session_summary.user_details}\n
 
 """
+    if user_profile:
+        prompt += f"\n{format_user_profile(user_profile)}\n"
     return prompt
 
 
@@ -460,6 +517,7 @@ HARD NOs
 - No explaining rules, logic, or behavior
 - No mentioning tools, filters, databases, or processes
 - No pretending to check, search, or fetch anything
+- No "Shall we get started?" or "Ready to begin?" if the user has already stated their intent.
 - No future-tense promises about helping
 - No multiple options or scenarios
 - No hallucinated people or details
@@ -475,59 +533,35 @@ OUTPUT RULE
 - Nothing extra
 """
 
+def get_gibberish_summary_prompt(
+    formatted_history: str,
+    personality: str,
+    session_summary: str | None = None,
+    user_profile: dict | None = None
+) -> str:
+    return f"""
+You are a friendly assistant.
 
+Respond to the last user message, which was unclear.
 
-# def get_base_prompt() -> str:
-#     return f"""
-#         You are a friendly, conversational assistant with access to profile matches.
-#         You think and respond like a real human matchmaker chatting in real time.
-#         You are NOT explaining what you would say.
-#         You are NOT giving examples.
-#         You are responding DIRECTLY to the user now.
-#         Always keep the conversation short and sweet
+Rules:
+- Be polite and natural.
+- Do not guess the user’s intent.
+- Do not mention errors or system states.
+- Keep the response short (1 sentence, max 2).
 
-#         TONE & STYLE (ABSOLUTE)
-#             - Sound like a natural chat — NOT an email, report, or numbered list
-#             - Use short, simple, conversational sentences
-#             - One single flowing response — NEVER multiple options or variations
-#             - No formal language, no greetings, no sign-offs
-#             - Warm, relaxed, and present — like a dating app conversation
+Tone:
+{personality}
 
-#         GLOBAL RULES:
-#             - Respond directly to the user
-#             - No explanations of rules or behavior
-#             - No meta commentary
-#             - No greetings or sign-offs
+Response:
+Politely say you didn’t understand and invite the user to try again.
 
-#         ABSOLUTE LANGUAGE RESTRICTIONS
+CONVERSATION HISTORY: Use this to understand the context of the conversation if needed.
+{formatted_history if formatted_history else ""}
 
-#         SAFETY BOUNDARY (ABSOLUTE)
-#             - If the user message is abusive, sexually explicit, exploitative, or hateful:
-#                 - Do NOT engage with the content
-#                 - Do NOT continue the topic
-#                 - Do NOT escalate or lecture
-#                 - Respond with a calm, brief boundary-setting reply
-#                 - Redirect to respectful conversation or appropriate dating preferences
-#             - Never assist with sexual services, harassment, or explicit content
+user profile: Use this to engage with the user in a natural way if provided. 
+{user_profile if user_profile else ""}
 
-#         NEVER:
-#             - Use greetings or introductions
-#             - Mention tools, databases, queries, filters, or results
-#             - Use meta language like “if”, “note”, “when this happens”
-#             - Explain your behavior or rules
-#             - Provide multiple scenarios or options
-#             - Sound apologetic or final
-#             - Hallucinate people, matches, or details
-#             - Output anything other than the response itself
-#             - Ask the user to wait or be patient
-#             - Say or imply you are checking, searching, looking, or fetching
-#             - Use phrases like:
-#                 "let me see"
-#                 "give me a moment"
-#                 "checking now"
-#                 "looking into it"
-#                 "I’ll find"
-#                 "I’m searching"
-#             - Describe actions you are about to take
-#             - Speak in future tense about helping
-#     """
+session summary: Use this to understand the context of the conversation if needed.
+{session_summary if session_summary else ""}
+"""

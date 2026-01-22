@@ -13,7 +13,7 @@ from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary
-from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt
+from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
 from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt
@@ -121,7 +121,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None) -> str:
         """
         Public API: Spawns the orchestration task.
         """
@@ -135,11 +135,11 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
@@ -149,6 +149,34 @@ class OrchestratorService:
             
             # 1. Prepare Context
             history, session_summary, session = await self._prepare_context(user_id, session_id)
+
+            # 1.1 Fetch Person Profile if person_id provided
+            user_profile = None
+            if person_id:
+                try:
+                    # 1. Check Redis Cache
+                    user_profile = await redis_service.get_person_profile(user_id, person_id)
+                    
+                    if user_profile:
+                        logger.info(f"Cache hit for person profile {person_id}")
+                    else:
+                        # 2. Fetch from Mongo
+                        logger.info(f"Cache miss for person profile {person_id}, fetching from Mongo")
+                        projection = {"name": 1, "age": 1, "gender": 1, "address": 1, "country": 1, "tags": 1}
+                        user_profile = await mongo_service.get_profile(user_id, person_id, projection)
+                        
+                        if user_profile:
+                            # 3. Save to Redis Cache (TTL 1 day)
+                            # Convert _id to str if present to ensure JSON serialization
+                             if "_id" in user_profile:
+                                 user_profile["_id"] = str(user_profile["_id"])
+                                 
+                             await redis_service.save_person_profile_cache(user_id, person_id, user_profile)
+                             logger.info(f"Cached person profile for {person_id}")
+
+                except Exception as e:
+                    logger.error(f"Failed to fetch person profile {person_id}: {e}")
+
             
             # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
             tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
@@ -194,7 +222,7 @@ class OrchestratorService:
 
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required, decision
+                tool_result_str, tool_args, structured_result, session_id, tool_required, decision, user_profile
             )
                 
 
@@ -280,6 +308,10 @@ class OrchestratorService:
 
     async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None):
         """Step 3: Extract args for the SELECTED tool and execute."""
+        final_tool_args = {}
+        tool_result_str = None
+        structured_result = None
+
         tool_list = self._mcp_client.get_sections("tools")
         selected_tool_meta = next((t for t in tool_list if t.get("name") == selected_tool), None)
         
@@ -317,10 +349,6 @@ class OrchestratorService:
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
         tool_args = resp.get("tool_args", {})
-        
-        tool_result_str = None
-        structured_result = None
-        final_tool_args = {}
         
         if tool_args:
             await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
@@ -407,14 +435,11 @@ class OrchestratorService:
                 await self._send_status(request_id, "TOOL_ERROR", {"error": str(e)})
         else:
             logger.info(f"No tool received from the model due to some reason debug using this {resp}")
-            tool_result_str = None
-            final_tool_args = None
-            structured_result = None
         return tool_result_str, final_tool_args, structured_result
 
         
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
         formatted_history = format_history_for_prompt(history)
@@ -422,17 +447,19 @@ class OrchestratorService:
         personality = get_base_prompt()
 
         if decision == 'ask_clarification':
-            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary)
+            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile)
         elif decision == 'tool':
             if structured_result and isinstance(structured_result, dict):
                 is_tool_result_check = len(structured_result.get("docs", [])) > 0
             else:
                 is_tool_result_check = False
-            default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary)
+            default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary, user_profile)
         elif decision == 'inappropriate_block':
-            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary)
+            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary, user_profile)
+        elif decision == 'gibberish':
+            default_prompt = get_gibberish_summary_prompt(formatted_history, personality, session_summary, user_profile)
         else:
-            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary)
+            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile)
 
         llm_req = LLMRequest(
             request_id=request_id,
@@ -685,6 +712,7 @@ class OrchestratorService:
         Helper method to merge new tool args with persisted state.
         Returns the final merged dictionary for the SPECIFIC tool.
         """
+        final_tool_args = {}
         final_tool_args = new_args.copy()  # Start with what LLM extracted
 
         # 1. Load full nested state
