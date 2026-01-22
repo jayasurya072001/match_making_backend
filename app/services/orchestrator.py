@@ -723,14 +723,14 @@ class OrchestratorService:
 
         # 🔹 NEW: Normalize page intent
         if "page" in final_tool_args:
-            prev_page = current_tool_args.get("page", 0)
+            prev_page = current_tool_args.get("page", 1)
 
             if final_tool_args["page"] == 1:
                 # Next page intent
                 final_tool_args["page"] = prev_page + 1
             else:
-                # page: 0 or anything else → reset
-                final_tool_args["page"] = 0
+                # page: 1 or anything else → reset
+                final_tool_args["page"] = 1
         
         # 3. Check for Reset
         if new_args.get("_reset"):  # Reset if _reset is present
@@ -751,7 +751,7 @@ class OrchestratorService:
                 merged[k] = v
         
         # 5. Check for Filter Changes (Reset Page)
-        # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 0.
+        # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 1.
         filters_changed = False
         for k in final_tool_args:
             if k in ["page", "_reset", "user_id"]:
@@ -760,7 +760,7 @@ class OrchestratorService:
             break
         
         if filters_changed:
-                merged["page"] = 0
+                merged["page"] = 1
         
         return merged
 
