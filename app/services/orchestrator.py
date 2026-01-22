@@ -720,9 +720,20 @@ class OrchestratorService:
         
         # 2. Extract specific tool section
         current_tool_args = full_state.get(selected_tool, {})
+
+        # 🔹 NEW: Normalize page intent
+        if "page" in final_tool_args:
+            prev_page = current_tool_args.get("page", 0)
+
+            if final_tool_args["page"] == 1:
+                # Next page intent
+                final_tool_args["page"] = prev_page + 1
+            else:
+                # page: 0 or anything else → reset
+                final_tool_args["page"] = 0
         
         # 3. Check for Reset
-        if new_args.get("_reset"):
+        if new_args.get("_reset"):  # Reset if _reset is present
             current_tool_args = {}
             final_tool_args.pop("_reset", None)
         

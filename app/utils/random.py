@@ -65,20 +65,19 @@ tools_specific_promtps = {
             - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
         7. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
             - Keep all existing user filters and preferences unchanged
-            - Increase result depth silently
             - Respond as if more options are now available
             - Never mention pagination, limits, page size, or re-querying
-            - Invite light refinement only if it feels natural
         
         PAGINATION RULE:
             - If user asks for "more", "next", "continue":
               - Check conversation history for the last tool call.
-              - Output {{"page": (previous_page + 1)}}. 
-              - If no page found, default to {{"page": 1}}.
+              - Output {{"page": 1}} - along with other previous filter if any.
+              - else: default to {{"page": 0}} - along with other previous filter if any.
 
         INTENT NORMALIZATION
         - "girl", "girls", "woman", "women", "lady", "ladies" → gender="female"
         - "guy", "man", "men", "guys", "boy", "boys", "male" → gender="male"
+        - similar for other fields as well where ever possible.
 
         STRICT OUTPUT RULES
         - ALWAYS return JSON ONLY.
