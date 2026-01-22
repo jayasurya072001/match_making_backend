@@ -209,5 +209,22 @@ class MCPClient:
                     formatted_output += f" [Allowed: {', '.join(map(str, enum_values))}]"
                 
                 formatted_output += "\n"
+        
+        return formatted_output
 
+    def format_tool_descriptions_for_llm(self, tools_list: list) -> str:
+        """
+        Convert list of tool dictionaries into a simple string of names and descriptions.
+        Used for the initial tool selection step.
+        """
+        if not tools_list:
+            return "No tools available."
+
+        formatted_output = "AVAILABLE TOOLS:\n"
+        for tool in tools_list:
+            name = tool.get("name")
+            description = tool.get("description", "").strip()
+            formatted_output += f"- Function: {name}\n"
+            formatted_output += f"  Description: {description}\n\n"
+        
         return formatted_output

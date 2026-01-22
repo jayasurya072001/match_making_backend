@@ -100,7 +100,7 @@ async def search_profiles(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{user_id}/profiles/search_by_name", tags=["profile search"])
+@router.get("/{user_id}/search_by_name", tags=["profile search"])
 async def search_profiles_by_name(
     name: str,
     limit: int = 1,

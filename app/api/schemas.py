@@ -89,8 +89,8 @@ class LLMRequest(BaseModel):
 class LLMResponse(BaseModel):
     request_id: str
     step: str
-    tool_required: Optional[bool] = None
-    selected_tool: Optional[str] = None
+    tool_required: Optional[str] = None
+    selected_tool: Optional[Any] = None
     tool_args: Optional[Any] = None
     tool_result: Optional[Any] = None
     final_answer: Optional[str] = None
@@ -158,6 +158,7 @@ class ChatRequestBody(BaseModel):
 
 class SessionSummary(BaseModel):
     user_id: str
+    session_id: Optional[str] = None
     important_points: List[str] = []
     user_details: List[str] = []
     last_updated: float = 0.0

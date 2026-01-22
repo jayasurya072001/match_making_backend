@@ -177,9 +177,11 @@ class RedisService:
 
     async def save_session_summary(self, user_id: str, summary: SessionSummary, session_id: str = None):
         key = f"session_summary:{user_id}"
+        print("user_id sessin summary save", user_id)
         if session_id:
             key = f"{key}:{session_id}"
         # Store as simple JSON string for simplicity, or RedisJSON
+        print("key", key)
         await self.client.set(key, summary.model_dump_json())
 
     async def get_session_summary(self, user_id: str, session_id: str = None) -> SessionSummary:
@@ -201,6 +203,13 @@ class RedisService:
         await self.client.delete(key)
         return True
 
+    async def delete_all_session_summaries(self, user_id: str) -> bool:
+        """Deletes all session summaries for a user."""
+        pattern = f"session_summary:{user_id}*"
+        async for key in self.client.scan_iter(match=pattern):
+            await self.client.delete(key)
+        return True
+
     async def save_tool_state(self, user_id: str, tool_args: dict, session_id: str = None):
         key = f"tool_state:{user_id}"
         if session_id:
@@ -214,6 +223,20 @@ class RedisService:
         data = await self.client.json().get(key)
         # return empty dict if None
         return data if data else {}
+
+    async def delete_tool_state(self, user_id: str, session_id: str = None) -> bool:
+        key = f"tool_state:{user_id}"
+        if session_id:
+            key = f"{key}:{session_id}"
+        await self.client.delete(key)
+        return True
+
+    async def delete_all_tool_states(self, user_id: str) -> bool:
+        """Deletes all tool states for a user."""
+        pattern = f"tool_state:{user_id}*"
+        async for key in self.client.scan_iter(match=pattern):
+            await self.client.delete(key)
+        return True
 
     async def count_user_profiles(self, user_id: str) -> int:
         # Use RediSearch index info if possible, otherwise keys scan (slow)
@@ -252,17 +275,12 @@ class RedisService:
         pattern = f"chat_history:{user_id}*"
         sessions = []
         
-        # Use SCAN to find keys
         async for key in self.client.scan_iter(match=pattern):
-            # Parse session_id
             parts = key.split(":") 
-            # Parts could be ['chat_history', 'userId'] or ['chat_history', 'userId', 'sessionId']
-            
             session_id = None
             if len(parts) > 2:
                 session_id = parts[2]
             
-            # Get count
             count = await self.client.llen(key)
             sessions.append({
                 "session_id": session_id,
@@ -270,6 +288,19 @@ class RedisService:
             })
             
         return sessions
+
+    async def delete_history(self, user_id: str, session_id: str = None):
+        """
+        Delete specific session history or all history if session_id is None.
+        """
+        if session_id:
+            key = f"chat_history:{user_id}:{session_id}"
+            await self.client.delete(key)
+        else:
+            pattern = f"chat_history:{user_id}*"
+            async for key in self.client.scan_iter(match=pattern):
+                await self.client.delete(key)
+        return True
 
     async def get_all_session_summaries(self, user_id: str) -> list[SessionSummary]:
         """
@@ -290,12 +321,38 @@ class RedisService:
             if data:
                 try:
                     summary = SessionSummary.model_validate_json(data)
-                    # Ensure we attach session_id if not in model? 
-                    # The model might not have session_id field if it was created before. 
-                    # But the requirement is just to return the list.
+                    # If session_id not in object, add it from key
+                    if not summary.session_id and session_id:
+                        summary.session_id = session_id
+                        
                     summaries.append(summary)
-                except:
+                except Exception as e:
+                    print(f"Error parsing session summary for key {key}: {e}")
                     pass
         return summaries
+
+    async def get_all_tool_states(self, user_id: str) -> list[dict]:
+        """
+        Scan for tool state keys and return parsed states.
+        Keys format: tool_state:{user_id} or tool_state:{user_id}:{session_id}
+        """
+        pattern = f"tool_state:{user_id}*"
+        states = []
+        
+        async for key in self.client.scan_iter(match=pattern):
+            # Parse session_id
+            parts = key.split(":")
+            session_id = None
+            if len(parts) > 2:
+                session_id = parts[2]
+                
+            data = await self.client.json().get(key)
+            if data:
+                states.append({
+                    "session_id": session_id,
+                    "tool_args": data
+                })
+        return states
+
 
 redis_service = RedisService()

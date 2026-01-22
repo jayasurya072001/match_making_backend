@@ -13,10 +13,10 @@ from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary
-from app.services.prompts import get_default_system_prompt, get_tool_system_prompt, get_summary_update_prompt, get_tool_check_prompt, get_tool_args_prompt, format_history_for_prompt
+from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random import generate_random_id, deep_clean_tool_args
+from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt
 
 
 logger = logging.getLogger(__name__)
@@ -140,6 +140,9 @@ class OrchestratorService:
         return request_id
 
     async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None):
+        tool_result_str = ""
+        tool_args = None
+        structured_result = None
         try:
             logger.info(f"Orchestration started for {request_id} and user {user_id} and session {session_id}")
             await self._send_status(request_id, "RECEIVED")
@@ -147,22 +150,53 @@ class OrchestratorService:
             # 1. Prepare Context
             history, session_summary, session = await self._prepare_context(user_id, session_id)
             
-            # 2. Step 1: Check Tool Required
+            # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
             tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
-            logger.info(f"Step 1 result: Tool Required {tool_required}")
-            
-            # 3. Step 2: Tool Execution (if needed)
-            tool_result_str, tool_args, structured_result = await self._step_tool_execution(
-                request_id, user_id, query, history, session, tool_required, session_id
-            )
 
-            logger.info(f"Step 2 result: Tool Result {tool_result_str}")
+            decision = tool_required.get("decision") if tool_required else None
+            logger.info(f"Step 1 result: Desicion {decision}")
+
+            if not decision:
+                logger.warning("Tool decision missing from LLM response")
+
+            elif decision == "tool":
+                # 3. New Step 2: Select Tool
+                selected_tool = await self._step_select_required_tool(
+                    request_id,
+                    user_id,
+                    query,
+                    history,
+                    session,
+                    session_id
+                )
+                logger.info(f"Step 2 result: Selected Tool {selected_tool}")
+
+                if selected_tool:
+                    # 4. Refactored Step 3: Tool Execution (Argument Extraction + Call)
+                    tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                        request_id,
+                        user_id,
+                        query,
+                        history,
+                        session,
+                        selected_tool,
+                        session_id
+                    )
+                    logger.info(f"Tool executed successfully")
+                else:
+                    logger.warning("No tool selected in Step 2, skipping execution")
             
-            # 4. Step 3: Summarize
+            elif decision in ("no_tool", "ask_clarification", "inappropriate_block"):
+                logger.info(f"Decision={decision}, skipping tool execution")
+
+            else:
+                logger.warning(f"Invalid tool decision received: {decision}")
+
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required
+                tool_result_str, tool_args, structured_result, session_id, tool_required, decision
             )
+                
 
         except Exception as e:
             logger.exception(f"Orchestration Error {request_id}: {e}")
@@ -209,23 +243,57 @@ class OrchestratorService:
         if resp.get("error"):
             raise Exception(f"LLM Error in Tool Check: {resp.get('error')}")
 
-        tool_required = resp.get("tool_required", False)
+        tool_required = resp.get("tool_required", "")
         return tool_required
 
-    async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, tool_required: bool, session_id: Optional[str] = None):
-        """Step 2: If required, identify tool, extract args, and execute."""
-        if not tool_required:
-            return None, None, None
-
+    async def _step_select_required_tool(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, session_id: Optional[str] = None) -> Optional[str]:
+        """Step 2: If tool is required, select the most appropriate tool."""
         tool_list = self._mcp_client.get_sections("tools")
-        formatted_tools = self._mcp_client.format_tools_for_llm(tool_list)
+        formatted_tool_descriptions = self._mcp_client.format_tool_descriptions_for_llm(tool_list)
+
+        formatted_history = format_history_for_prompt(history)
+        selection_prompt = get_tool_selection_prompt(formatted_tool_descriptions, formatted_history)
+
+        llm_req = LLMRequest(
+            request_id=request_id,
+            step="select_tool",
+            message=query,
+            system_prompt=selection_prompt,
+            json_response=True,
+            response_topic=settings.KAFKA_RESPONSE_TOPIC,
+            metadata={"user_id": user_id}
+        )
+        t0 = time.time()
+        await self._dispatch_llm_request(llm_req)
+        await self._send_status(request_id, "LLM_SELECTING_TOOL")
+
+        resp = await self._wait_for_llm(request_id)
+        if not resp:
+            raise Exception("Timeout waiting for Tool Selection Step")
         
+        metrics_service.record_step_duration("select_tool", time.time() - t0)
+        
+        if resp.get("error"):
+            raise Exception(f"LLM Error in Tool Selection: {resp.get('error')}")
+
+        return resp.get("selected_tool")
+
+    async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None):
+        """Step 3: Extract args for the SELECTED tool and execute."""
+        tool_list = self._mcp_client.get_sections("tools")
+        selected_tool_meta = next((t for t in tool_list if t.get("name") == selected_tool), None)
+        
+        if not selected_tool_meta:
+            raise Exception(f"Selected tool {selected_tool} not found in MCP tools")
+
+        tool_schema = json.dumps(selected_tool_meta.get("input_schema", {}), indent=2)
         formatted_history = format_history_for_prompt(history)
         
-        # Get Prompt
-        args_system_prompt = get_tool_args_prompt(formatted_tools, formatted_history)
+        # Get Prompt for targeted argument extraction
+        tool_specific_prompt = get_tool_specific_prompt(selected_tool)
 
-        logger.info(f"Sending for tool")
+        args_system_prompt = get_tool_args_prompt(selected_tool, tool_specific_prompt, tool_schema, formatted_history)
+
         # Dispatch Request
         llm_req = LLMRequest(
             request_id=request_id,
@@ -248,16 +316,13 @@ class OrchestratorService:
         logger.info(f"Tool Args Response: {resp}")
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
-
-        selected_tool = resp.get("selected_tool")
         tool_args = resp.get("tool_args", {})
-        logger.info(f"Selected Tool: {selected_tool}")
-        logger.info(f"Tool Args: {tool_args}")
         
         tool_result_str = None
         structured_result = None
+        final_tool_args = {}
         
-        if selected_tool:
+        if tool_args:
             await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
             try:
                 if isinstance(tool_args, str): tool_args = json.loads(tool_args)
@@ -265,21 +330,39 @@ class OrchestratorService:
                 # ----------------------------------------
                 # DETERMINISTIC MERGING LOGIC
                 # ----------------------------------------
-                logger.info(f"Merging tool args")
                 final_tool_args = await self._merge_tool_args(user_id, session_id, selected_tool, tool_args)
-                logger.info(f"Final tool args: {final_tool_args}")
                 # ----------------------------------------
 
-                final_tool_args['user_id'] = user_id
-                final_tool_args = deep_clean_tool_args(final_tool_args)
-                logger.info(f"Final tool args after cleaning: {final_tool_args}")
+                # ----------------------------------------
+                # SCHEMA VALIDATION & CLEANING
+                # ----------------------------------------
+                # 1. Get Schema for the selected tool
+                selected_tool_meta = next((t for t in tool_list if t.get("name") == selected_tool), None)
+                if selected_tool_meta:
+                    tool_schema = selected_tool_meta.get("input_schema", {})
+                    
+                    # 2. Add user_id to args before validation if schema expects it
+                    final_tool_args['user_id'] = user_id
+                    
+                    # 3. Validate and Clean
+                    final_tool_args = validate_and_clean_tool_args(final_tool_args, tool_schema)
+                    
+                    # 4. PERSIST THE CLEANED STATE (NESTED)
+                    full_state = await redis_service.get_tool_state(user_id, session_id)
+                    full_state[selected_tool] = final_tool_args
+                    await redis_service.save_tool_state(user_id, full_state, session_id)
+                else:
+                    # Fallback to standard clean if meta not found
+                    final_tool_args['user_id'] = user_id
+                    final_tool_args = deep_clean_tool_args(final_tool_args)
+                # ----------------------------------------
 
                 logger.info(f"Tool executing {selected_tool} with args {final_tool_args}")
 
                 # EXECUTE TOOL
-                res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args) 
+                res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args)
 
-                logger.info(f"Tool Execution Result: {res_mcp}")
+                logger.info(f"Raw mcp result {res_mcp}")
                 
                 if isinstance(res_mcp, dict):
                     output = res_mcp.get("output")
@@ -295,7 +378,21 @@ class OrchestratorService:
                                     structured_result = json.loads(item.text)
                                     break
                     
+                    # ----------------------------------------
+                    # AUTO-RESET LOGIC (NESTED)
+                    # ----------------------------------------
+                    if structured_result and isinstance(structured_result, dict):
+                        docs = structured_result.get("docs", [])
+                        if len(docs) == 0:
+                            logger.info(f"Tool {selected_tool} returned 0 results. Auto-resetting persisted state for this tool.")
+                            full_state = await redis_service.get_tool_state(user_id, session_id)
+                            full_state.pop(selected_tool, None)
+                            await redis_service.save_tool_state(user_id, full_state, session_id)
+                    # ----------------------------------------
+
                 tool_result_str = json.dumps(structured_result, default=str)
+
+                logger.info(f"Tool result {tool_result_str}")
                 
                 # Append Tool Execution to History
                 await self.append_history(user_id, {
@@ -308,15 +405,34 @@ class OrchestratorService:
             except Exception as e:
                 tool_result_str = f"Error: {str(e)}"
                 await self._send_status(request_id, "TOOL_ERROR", {"error": str(e)})
+        else:
+            logger.info(f"No tool received from the model due to some reason debug using this {resp}")
+            tool_result_str = None
+            final_tool_args = None
+            structured_result = None
+        return tool_result_str, final_tool_args, structured_result
 
-        return tool_result_str, final_tool_args if selected_tool else tool_args, structured_result
+        
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
         formatted_history = format_history_for_prompt(history)
-        
-        default_prompt = get_default_system_prompt(formatted_history, tool_result_str, session_summary)
+
+        personality = get_base_prompt()
+
+        if decision == 'ask_clarification':
+            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary)
+        elif decision == 'tool':
+            if structured_result and isinstance(structured_result, dict):
+                is_tool_result_check = len(structured_result.get("docs", [])) > 0
+            else:
+                is_tool_result_check = False
+            default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary)
+        elif decision == 'inappropriate_block':
+            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary)
+        else:
+            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary)
 
         llm_req = LLMRequest(
             request_id=request_id,
@@ -479,7 +595,10 @@ class OrchestratorService:
                 # Check for Session Update Response
                 if rid and rid.startswith("SUMMARY-") and data.get("custom_response"):
                     session_id = data.get("metadata", {}).get("session_id")
-                    await self._handle_summary_update(data.get("custom_response"), session_id)
+                    custom_response = data.get("custom_response")
+                    custom_response['user_id'] = data.get('metadata', {}).get('user_id', None)
+                    custom_response['session_id'] = session_id
+                    await self._handle_summary_update(custom_response, session_id)
 
                 # Check for Pong
                 if data.get("type") == "pong":
@@ -514,10 +633,7 @@ class OrchestratorService:
         await redis_service.client.ltrim(key, 0, 4)
 
     async def delete_history(self, user_id: str, session_id: Optional[str] = None):
-        key = f"chat_history:{user_id}"
-        if session_id:
-             key = f"{key}:{session_id}"
-        await redis_service.client.delete(key)
+        await redis_service.delete_history(user_id, session_id)
 
     async def get_all_sessions(self, user_id: str) -> List[Dict]:
         return await redis_service.get_user_chat_sessions(user_id)
@@ -539,7 +655,7 @@ class OrchestratorService:
             new_summary.last_updated = time.time()
 
             await redis_service.save_session_summary(uid, new_summary, session_id)
-            # logger.info(f"Updated Session Summary for {uid}")
+            logger.info(f"Updated Session Summary for {uid}")
 
         except Exception as e:
             logger.error(f"Failed to save session summary: {e}", exc_info=True)
@@ -567,39 +683,46 @@ class OrchestratorService:
     async def _merge_tool_args(self, user_id: str, session_id: Optional[str], selected_tool: str, new_args: dict) -> dict:
         """
         Helper method to merge new tool args with persisted state.
-        Returns the final merged dictionary.
-        Persists the result to Redis immediately.
+        Returns the final merged dictionary for the SPECIFIC tool.
         """
         final_tool_args = new_args.copy()  # Start with what LLM extracted
 
-        if selected_tool == "search_profiles":
-            # 1. Load existing state
-            current_args = await redis_service.get_tool_state(user_id, session_id)
-            
-            # 2. Check for Reset
-            if new_args.get("_reset"):
-                current_args = {}
-                final_tool_args.pop("_reset", None)
-            
-            # 3. Merge Logic
-            # Start with current (baseline)
-            merged = current_args.copy()
-            
-            # Apply updates from LLM (new_args)
-            for k, v in final_tool_args.items():
-                if v is None:
-                    # Explicit removal
-                    merged.pop(k, None)
-                else:
-                    # Update/Add
-                    merged[k] = v
-            
-            final_tool_args = merged
-            
-            # 4. Persist State IMMEDIATELY
-            await redis_service.save_tool_state(user_id, final_tool_args, session_id)
-            logger.info(f"Persisted Tool Args: {final_tool_args}")
-            
-        return final_tool_args
+        # 1. Load full nested state
+        full_state = await redis_service.get_tool_state(user_id, session_id)
+        
+        # 2. Extract specific tool section
+        current_tool_args = full_state.get(selected_tool, {})
+        
+        # 3. Check for Reset
+        if new_args.get("_reset"):
+            current_tool_args = {}
+            final_tool_args.pop("_reset", None)
+        
+        # 4. Merge Logic
+        # Start with current (baseline for this tool)
+        merged = current_tool_args.copy()
+        
+        # Apply updates from LLM (new_args)
+        for k, v in final_tool_args.items():
+            if v is None:
+                # Explicit removal
+                merged.pop(k, None)
+            else:
+                # Update/Add
+                merged[k] = v
+        
+        # 5. Check for Filter Changes (Reset Page)
+        # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 0.
+        filters_changed = False
+        for k in final_tool_args:
+            if k in ["page", "_reset", "user_id"]:
+                continue
+            filters_changed = True
+            break
+        
+        if filters_changed:
+                merged["page"] = 0
+        
+        return merged
 
 orchestrator_service = OrchestratorService()
