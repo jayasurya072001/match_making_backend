@@ -214,7 +214,7 @@ class OrchestratorService:
                 else:
                     logger.warning("No tool selected in Step 2, skipping execution")
             
-            elif decision in ("no_tool", "ask_clarification", "inappropriate_block"):
+            elif decision in ("no_tool", "ask_clarification", "inappropriate_block", "gibberish"):
                 logger.info(f"Decision={decision}, skipping tool execution")
 
             else:

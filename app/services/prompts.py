@@ -201,7 +201,17 @@ def get_tool_check_prompt(history_str: str = ""):
 
         --------------------------------------------------
 
-        STEP 2 — VALID SEARCH → "tool"
+        STEP 2 - Gibberish - "gibberish"
+        Return "gibberish" if:
+        - The user input is gibberish or random characters
+
+        Examples:
+        - "osicjucbdjbcn",
+        - ".",
+        - "2-0d9nc30948"
+
+        --------------------------------------------------
+        STEP 3 — VALID SEARCH → "tool"
         Return "tool" if:
         - The user wants to find/search/list people
         - AND mentions AT LEAST ONE attribute such as:
@@ -216,7 +226,7 @@ def get_tool_check_prompt(history_str: str = ""):
 
         --------------------------------------------------
 
-        STEP 3 - Inappropriate Block - "inappropriate_block"
+        STEP 4 - Inappropriate Block - "inappropriate_block"
         Return "inappropriate_block" if:
         - The user message contains sexual, explicit, or pornographic language
         - The user objectifies people based on private body parts or sexual traits
@@ -234,7 +244,7 @@ def get_tool_check_prompt(history_str: str = ""):
 
         --------------------------------------------------
 
-        STEP 4 — INCOMPLETE SEARCH → "ask_clarification"
+        STEP 5 — INCOMPLETE SEARCH → "ask_clarification"
         Return "ask_clarification" ONLY if:
         - User shows search intent
         - AND provides ZERO actionable filter
@@ -243,17 +253,6 @@ def get_tool_check_prompt(history_str: str = ""):
         - "North India"
         - "girls in Asia"
         - "people in USA"
-
-        --------------------------------------------------
-
-        STEP 5 - Gibberish - "gibberish"
-        Return "gibberish" if:
-        - The user input is gibberish or random characters
-
-        Examples:
-        - "osicjucbdjbcn",
-        - ".",
-        - "2-0d9nc30948"
 
         --------------------------------------------------
 
@@ -288,7 +287,7 @@ def get_tool_check_prompt(history_str: str = ""):
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         {{
-        "decision": "tool" | "ask_clarification" | "inappropriate_block" | "gibberish" | "no_tool"
+        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "no_tool"
         }}
 
         --------------------------------------------------
