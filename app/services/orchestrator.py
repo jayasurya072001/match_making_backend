@@ -448,12 +448,16 @@ class OrchestratorService:
 
         personality = get_base_prompt()
         voice_id = None
+        language=None
+        identity=None
         if personality_id:
             persona = await cache_persona.get_persona(user_id, personality_id)
             if persona:
                 logger.info(f"Personality found for {user_id} and {personality_id}")
                 personality = persona_json_to_system_prompt(persona.get("personality"))
                 voice_id = persona.get("voice_id")
+                identity = persona.get("identity", {})
+                language=lines.append(f"- Languages: {', '.join(identity['languages'])}")
 
         if decision == 'ask_clarification':
             default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile)
@@ -469,6 +473,10 @@ class OrchestratorService:
             default_prompt = get_gibberish_summary_prompt(formatted_history, personality, session_summary, user_profile)
         else:
             default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile)
+
+        SHORT_ANSWER_PROMPT="MANDATORY: ANSWER IN ONE SENTENCE. IF ABSOLUTELY NECESSARY, USE TWO SENTENCES. DO NOT ELABORATE OR PROVIDE UNNECESSARY DETAILS."
+        LANGUAGE_PROMPT=f"MANDATORY: RESPOND ONLY IN {language}. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
+        default_prompt=default_prompt+SHORT_ANSWER_PROMPT+LANGUAGE_PROMPT
 
         llm_req = LLMRequest(
             request_id=request_id,

@@ -134,22 +134,22 @@ def persona_json_to_system_prompt(persona: dict) -> str:
         lines.append(f"- Areas of Expertise: {', '.join(professional['areas_of_expertise'])}")
 
     # Academics
-    # if academics:
-    #     lines.append("\nACADEMICS:")
-    #     if academics.get("school"):
-    #         lines.append(f"- School: {', '.join(academics['school'])}")
-    #     if academics.get("university"):
-    #         lines.append(f"- University: {', '.join(academics['university'])}")
+    if academics:
+        lines.append("\nACADEMICS:")
+        if academics.get("school"):
+            lines.append(f"- School: {', '.join(academics['school'])}")
+        if academics.get("university"):
+            lines.append(f"- University: {', '.join(academics['university'])}")
 
-    # # Family
-    # if family:
-    #     lines.append("\nFAMILY:")
-    #     lines.append(f"- Marital Status: {family.get('marital_status')}")
-    #     lines.append(f"- Spouse Name: {family.get('spouse_name')}")
-    #     lines.append(f"- Children Count: {family.get('children_count')}")
-    #     lines.append(f"- Siblings Count: {family.get('siblings_count')}")
-    #     lines.append(f"- Father Name: {family.get('father_name')}")
-    #     lines.append(f"- Mother Name: {family.get('mother_name')}")
+    # Family
+    if family:
+        lines.append("\nFAMILY:")
+        lines.append(f"- Marital Status: {family.get('marital_status')}")
+        lines.append(f"- Spouse Name: {family.get('spouse_name')}")
+        lines.append(f"- Children Count: {family.get('children_count')}")
+        lines.append(f"- Siblings Count: {family.get('siblings_count')}")
+        lines.append(f"- Father Name: {family.get('father_name')}")
+        lines.append(f"- Mother Name: {family.get('mother_name')}")
 
     # Lifestyle
     if lifestyle:
@@ -181,6 +181,6 @@ def persona_json_to_system_prompt(persona: dict) -> str:
         lines.append(f"EXPERT LEVEL: {persona['expert_level']}")
 
     if persona.get("response_language"):
-        lines.append(f"RESPONSE LANGUAGE: {persona['response_language']}")
+        lines.append(f"MANDATORY RESPONSE LANGUAGE: {persona['response_language']}")
 
     return "\n".join(lines)
