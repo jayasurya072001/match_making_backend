@@ -725,11 +725,11 @@ class OrchestratorService:
         if "page" in final_tool_args:
             prev_page = current_tool_args.get("page", 1)
 
-            if final_tool_args["page"] == 1:
+            if final_tool_args["page"] > 0:
                 # Next page intent
                 final_tool_args["page"] = prev_page + 1
-            else:
-                # page: 1 or anything else → reset
+            elif final_tool_args["page"] == 0:
+                # page: 0 or anything else → reset
                 final_tool_args["page"] = 1
         
         # 3. Check for Reset

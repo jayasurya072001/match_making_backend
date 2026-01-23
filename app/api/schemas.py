@@ -75,7 +75,7 @@ class SearchRequest(BaseModel):
     geo_filter: Optional[GeoFilter] = None
     k: Optional[int] = 5
     limit_score: Optional[float] = 0.7
-    page: Optional[int] = 0
+    page: Optional[int] = 1
 
 class LLMRequest(BaseModel):
     request_id: str

@@ -96,7 +96,7 @@ class RedisService:
         key = f"doc:{user_id}:{profile_data['id']}"
         await self.client.json().set(key, "$", profile_data)
 
-    async def search(self, user_id: str, query_vector: list[float] = None, filters: dict = None, geo_filter: dict = None, k: int = 5, page: int = 0):
+    async def search(self, user_id: str, query_vector: list[float] = None, filters: dict = None, geo_filter: dict = None, k: int = 5, page: int = 1):
         index_name = f"idx:{user_id}"
         
         # Base Query
