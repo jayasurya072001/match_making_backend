@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     KAFKA_STATUS_TOPIC: str
     LOG_LEVEL: str
     MCP_SERVER_SCRIPT: str
+    ELEVEN_LABS_API_KEY: str
+    AZURE_STORAGE_CONNECTION_STRING: str
+    AZURE_STORAGE_CONTAINER_NAME: str
 
     class Config:
         env_file = ".env"

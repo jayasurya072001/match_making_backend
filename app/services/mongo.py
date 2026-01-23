@@ -106,6 +106,7 @@ class MongoService:
                 "_id": persona_id,
                 "user_id": user_id,
                 "persona_id": persona_id,
+                "voice_id": data["voice_id"],
                 "personality": data,
                 "created_at": datetime.datetime.utcnow(),
                 "updated_at": datetime.datetime.utcnow()

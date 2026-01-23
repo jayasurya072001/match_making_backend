@@ -167,6 +167,7 @@ class SessionSummary(BaseModel):
 class PersonalityModel(BaseModel):
     persona_id: Optional[str] = None
     user_id: str
+    voice_id: Optional[str] = None
     personality: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
