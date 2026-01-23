@@ -6,6 +6,9 @@ from app.core.config import settings
 from app.api.schemas import SessionSummary
 import numpy as np
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RedisService:
     def __init__(self):
@@ -373,6 +376,11 @@ class RedisService:
         """
         key = f"person_profile:{user_id}:{person_id}"
         await self.client.set(key, json.dumps(profile_data), ex=ttl)
+    
+    async def close(self):
+        if self.client:
+            logger.info("Redis Connection Stopped")
+            await self.client.close()
 
 
 redis_service = RedisService()

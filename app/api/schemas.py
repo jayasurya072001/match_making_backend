@@ -162,3 +162,11 @@ class SessionSummary(BaseModel):
     important_points: List[str] = []
     user_details: List[str] = []
     last_updated: float = 0.0
+
+
+class PersonalityModel(BaseModel):
+    persona_id: Optional[str] = None
+    user_id: str
+    personality: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)

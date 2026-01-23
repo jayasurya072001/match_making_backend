@@ -16,8 +16,8 @@ from app.api.schemas import LLMRequest, SessionSummary
 from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt
-
+from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
+from app.utils.cache_persona import cache_persona
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None) -> str:
         """
         Public API: Spawns the orchestration task.
         """
@@ -135,11 +135,11 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
@@ -222,7 +222,7 @@ class OrchestratorService:
 
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required, decision, user_profile
+                tool_result_str, tool_args, structured_result, session_id, tool_required, decision, user_profile, personality_id
             )
                 
 
@@ -439,12 +439,17 @@ class OrchestratorService:
 
         
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None, personality_id: Optional[str] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
         formatted_history = format_history_for_prompt(history)
 
         personality = get_base_prompt()
+        if personality_id:
+            persona = await cache_persona.get_persona(user_id, personality_id)
+            if persona.get("personality"):
+                logger.info(f"Personality found for {user_id} and {personality_id}")
+                personality = persona_json_to_system_prompt(persona.get("personality"))
 
         if decision == 'ask_clarification':
             default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile)

@@ -95,3 +95,92 @@ def get_tool_specific_prompt(selected_tool):
     return tools_specific_promtps.get(selected_tool, "")
 
 
+
+def persona_json_to_system_prompt(persona: dict) -> str:
+    """
+    Converts a persona JSON into a system instruction prompt.
+    Uses ONLY fields present in the JSON.
+    No inferred behavior, no added rules.
+    """
+
+    identity = persona.get("identity", {})
+    professional = persona.get("professional", {})
+    academics = persona.get("academics", {})
+    family = persona.get("family", {})
+    lifestyle = persona.get("lifestyle", {})
+    strengths = persona.get("strengths_and_weaknesses", {})
+
+    lines = []
+
+    # Core identity
+    lines.append(f"You are {identity.get('full_name')}.")
+
+    # Identity
+    lines.append("\nIDENTITY:")
+    lines.append(f"- Full Name: {identity.get('full_name')}")
+    lines.append(f"- Age: {identity.get('age')}")
+    lines.append(f"- Location: {identity.get('location')}")
+    if identity.get("languages"):
+        lines.append(f"- Languages: {', '.join(identity['languages'])}")
+    if identity.get("physical_description"):
+        lines.append(f"- Physical Description: {identity['physical_description']}")
+
+    # Professional
+    lines.append("\nPROFESSIONAL BACKGROUND:")
+    lines.append(f"- Current Role: {professional.get('current_role')}")
+    lines.append(f"- Company: {professional.get('company')}")
+    lines.append(f"- Years of Experience: {professional.get('years_of_experience')}")
+    if professional.get("areas_of_expertise"):
+        lines.append(f"- Areas of Expertise: {', '.join(professional['areas_of_expertise'])}")
+
+    # Academics
+    # if academics:
+    #     lines.append("\nACADEMICS:")
+    #     if academics.get("school"):
+    #         lines.append(f"- School: {', '.join(academics['school'])}")
+    #     if academics.get("university"):
+    #         lines.append(f"- University: {', '.join(academics['university'])}")
+
+    # # Family
+    # if family:
+    #     lines.append("\nFAMILY:")
+    #     lines.append(f"- Marital Status: {family.get('marital_status')}")
+    #     lines.append(f"- Spouse Name: {family.get('spouse_name')}")
+    #     lines.append(f"- Children Count: {family.get('children_count')}")
+    #     lines.append(f"- Siblings Count: {family.get('siblings_count')}")
+    #     lines.append(f"- Father Name: {family.get('father_name')}")
+    #     lines.append(f"- Mother Name: {family.get('mother_name')}")
+
+    # Lifestyle
+    if lifestyle:
+        lines.append("\nLIFESTYLE:")
+        if lifestyle.get("hobbies"):
+            lines.append(f"- Hobbies: {', '.join(lifestyle['hobbies'])}")
+        if lifestyle.get("personal_interests"):
+            lines.append(f"- Personal Interests: {', '.join(lifestyle['personal_interests'])}")
+        if lifestyle.get("lifestyle_description"):
+            lines.append(f"- Lifestyle Description: {lifestyle['lifestyle_description']}")
+
+    # Strengths & weaknesses
+    if strengths:
+        lines.append("\nSTRENGTHS AND WEAKNESSES:")
+        if strengths.get("strengths"):
+            lines.append(f"- Strengths: {', '.join(strengths['strengths'])}")
+        if strengths.get("weaknesses"):
+            lines.append(f"- Weaknesses: {', '.join(strengths['weaknesses'])}")
+
+    # Domain expertise
+    if persona.get("expertise"):
+        lines.append("\nEXPERTISE:")
+        lines.append(f"- {', '.join(persona['expertise'])}")
+
+    # Meta attributes
+    if persona.get("humor"):
+        lines.append(f"\nHUMOR STYLE: {persona['humor']}")
+    if persona.get("expert_level"):
+        lines.append(f"EXPERT LEVEL: {persona['expert_level']}")
+
+    if persona.get("response_language"):
+        lines.append(f"RESPONSE LANGUAGE: {persona['response_language']}")
+
+    return "\n".join(lines)
