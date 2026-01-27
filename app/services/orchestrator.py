@@ -307,6 +307,150 @@ class OrchestratorService:
             raise Exception(f"LLM Error in Tool Selection: {resp.get('error')}")
 
         return resp.get("selected_tool")
+    
+    def _get_selected_tool_meta(self, tool_list, selected_tool):
+        meta = next((t for t in tool_list if t.get("name") == selected_tool), None)
+        if not meta:
+            raise Exception(f"Selected tool {selected_tool} not found in MCP tools")
+        return meta
+
+    
+    def _parse_mcp_output(self, res_mcp):
+        if not isinstance(res_mcp, dict):
+            return None
+
+        output = res_mcp.get("output")
+        if not output:
+            return None
+
+        if getattr(output, "structuredContent", None):
+            return output.structuredContent
+
+        if getattr(output, "content", None):
+            for item in output.content:
+                if getattr(item, "type", None) == "text":
+                    return json.loads(item.text)
+
+        return None
+    
+    async def _prepare_and_validate_tool_args(self, user_id, session_id, selected_tool, tool_args, tool_list ):
+        # Merge deterministic state
+        final_tool_args = await self._merge_tool_args(
+            user_id, session_id, selected_tool, tool_args
+        )
+
+        tool_meta = self._get_selected_tool_meta(tool_list, selected_tool)
+        tool_schema = tool_meta.get("input_schema", {})
+
+        # Inject user_id
+        final_tool_args["user_id"] = user_id
+
+        # Validate & clean
+        final_tool_args = validate_and_clean_tool_args(final_tool_args, tool_schema)
+
+        # Persist cleaned state
+        full_state = await redis_service.get_tool_state(user_id, session_id)
+        full_state[selected_tool] = final_tool_args
+        await redis_service.save_tool_state(user_id, full_state, session_id)
+
+        return final_tool_args
+    
+    async def _check_result_already_fetched( self, structured_result, selected_tool, user_id, session_id, final_tool_args):
+        if not structured_result or not isinstance(structured_result, dict):
+            return False
+
+        docs = structured_result.get("docs", [])
+        if not docs:
+            return False
+
+        full_state = await redis_service.get_tool_state(user_id, session_id)
+
+        # Tool-scoped namespace
+        tool_state = full_state.setdefault(selected_tool, {})
+        seen_docs = set(tool_state.get("seen_docs", []))
+
+        seen = False
+        new_ids = []
+
+        for doc in docs:
+            doc_id = doc.get("id")
+            if not doc_id:
+                continue
+
+            if doc_id in seen_docs:
+                seen = True
+            else:
+                new_ids.append(doc_id)
+
+        # Persist updated state
+        if new_ids:
+            seen_docs.update(new_ids)
+            tool_state["seen_docs"] = list(seen_docs)
+            full_state[selected_tool] = tool_state
+            await redis_service.save_tool_state(user_id, full_state, session_id)
+
+        return seen
+
+
+    async def _handle_auto_reset_and_pagination( self, structured_result, selected_tool, user_id, session_id, final_tool_args):
+        if not isinstance(structured_result, dict):
+            return structured_result
+
+        docs = structured_result.get("docs", [])
+
+        # ----------------------------------------
+        # AUTO-RESET LOGIC
+        # ----------------------------------------
+        if len(docs) == 0:
+            logger.info(
+                f"Tool {selected_tool} returned 0 results. Auto-resetting state."
+            )
+            full_state = await redis_service.get_tool_state(user_id, session_id)
+            full_state.pop(selected_tool, None)
+            await redis_service.save_tool_state(user_id, full_state, session_id)
+            return structured_result
+
+        # ----------------------------------------
+        # PAGINATION WITH BOUNDED RETRIES
+        # ----------------------------------------
+        MAX_PAGINATION_RETRIES = 3
+        attempts = 0
+        current_result = structured_result
+
+        while attempts < MAX_PAGINATION_RETRIES:
+            if not self._check_result_already_fetched(
+                current_result,
+                selected_tool,
+                user_id,
+                session_id,
+                final_tool_args,
+            ):
+                # Fresh results found
+                return current_result
+
+            logger.info(
+                f"Duplicate results detected for tool={selected_tool}. "
+                f"Retry {attempts + 1}/{MAX_PAGINATION_RETRIES}"
+            )
+
+            # Increment page safely (page 1 → 2 → 3 ...)
+            final_tool_args["page"] = final_tool_args.get("page", 1) + 1
+
+            new_res = await self._mcp_client.call_tool(
+                selected_tool, final_tool_args
+            )
+            current_result = self._parse_mcp_output(new_res)
+
+            if not current_result or not isinstance(current_result, dict):
+                break
+
+            attempts += 1
+
+        # Best-effort return
+        return current_result
+
+
+
 
     async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None):
         """Step 3: Extract args for the SELECTED tool and execute."""
@@ -351,85 +495,43 @@ class OrchestratorService:
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
         tool_args = resp.get("tool_args", {})
+
+        if not tool_args:
+            logger.info(f"No tool args returned: {resp}")
+            return None, {}, None
+
+        if isinstance(tool_args, str):
+            tool_args = json.loads(tool_args)
+        
+        await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
         
         if tool_args:
-            await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
             try:
-                if isinstance(tool_args, str): tool_args = json.loads(tool_args)
+                final_tool_args = await self._prepare_and_validate_tool_args(
+                    user_id, session_id, selected_tool, tool_args, tool_list
+                )
+                
+                logger.info(f"Executing tool {selected_tool} with args {final_tool_args}")
 
-                # ----------------------------------------
-                # DETERMINISTIC MERGING LOGIC
-                # ----------------------------------------
-                final_tool_args = await self._merge_tool_args(user_id, session_id, selected_tool, tool_args)
-                # ----------------------------------------
-
-                # ----------------------------------------
-                # SCHEMA VALIDATION & CLEANING
-                # ----------------------------------------
-                # 1. Get Schema for the selected tool
-                selected_tool_meta = next((t for t in tool_list if t.get("name") == selected_tool), None)
-                if selected_tool_meta:
-                    tool_schema = selected_tool_meta.get("input_schema", {})
-                    
-                    # 2. Add user_id to args before validation if schema expects it
-                    final_tool_args['user_id'] = user_id
-                    
-                    # 3. Validate and Clean
-                    final_tool_args = validate_and_clean_tool_args(final_tool_args, tool_schema)
-                    
-                    # 4. PERSIST THE CLEANED STATE (NESTED)
-                    full_state = await redis_service.get_tool_state(user_id, session_id)
-                    full_state[selected_tool] = final_tool_args
-                    await redis_service.save_tool_state(user_id, full_state, session_id)
-                else:
-                    # Fallback to standard clean if meta not found
-                    final_tool_args['user_id'] = user_id
-                    final_tool_args = deep_clean_tool_args(final_tool_args)
-                # ----------------------------------------
-
-                logger.info(f"Tool executing {selected_tool} with args {final_tool_args}")
-
-                # EXECUTE TOOL
                 res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args)
 
-                logger.info(f"Raw mcp result {res_mcp}")
-                
-                if isinstance(res_mcp, dict):
-                    output = res_mcp.get("output")
-                    if output:
-                        # Case 1: MCP returned structured content
-                        if getattr(output, "structuredContent", None):
-                            structured_result = output.structuredContent 
+                structured_result = self._parse_mcp_output(res_mcp)
 
-                        # Case 2: MCP returned text content (YOUR CASE)
-                        elif getattr(output, "content", None):
-                            for item in output.content:
-                                if getattr(item, "type", None) == "text":
-                                    structured_result = json.loads(item.text)
-                                    break
-                    
-                    # ----------------------------------------
-                    # AUTO-RESET LOGIC (NESTED)
-                    # ----------------------------------------
-                    if structured_result and isinstance(structured_result, dict):
-                        docs = structured_result.get("docs", [])
-                        if len(docs) == 0:
-                            logger.info(f"Tool {selected_tool} returned 0 results. Auto-resetting persisted state for this tool.")
-                            full_state = await redis_service.get_tool_state(user_id, session_id)
-                            full_state.pop(selected_tool, None)
-                            await redis_service.save_tool_state(user_id, full_state, session_id)
-                    # ----------------------------------------
+                structured_result = await self._handle_auto_reset_and_pagination(
+                    structured_result,
+                    selected_tool,
+                    user_id,
+                    session_id,
+                    final_tool_args
+                )
 
                 tool_result_str = json.dumps(structured_result, default=str)
 
-                logger.info(f"Tool result {tool_result_str}")
-                
-                # Append Tool Execution to History
-                await self.append_history(user_id, {
-                    "role": "tool",
-                    "name": selected_tool,
-                    "args": final_tool_args
-                }, session_id)
+                await self.append_history(
+                    user_id,
+                    {"role": "tool", "name": selected_tool, "args": final_tool_args},
+                    session_id
+                )
                 await self._send_status(request_id, "TOOL_EXECUTED")
                 
             except Exception as e:
