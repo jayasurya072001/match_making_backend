@@ -361,6 +361,14 @@ TASK:
 Respond to the user's latest message.
 Keep the user engaging and interested.
 
+IMPORTANT POINTS:
+- Do not answer queries that are not related to dating or match-making.
+- Do not answer questions like programming, math, or general knowledge.
+- Do not give advice on topics like health, finance, or legal matters.
+- Do not suggest actions outside of dating or match-making.
+- Politely set boundaries if the user goes off-topic.
+- Redirect the conversation back to dating and match-making.
+
 CONVERSATION HISTORY:
 {history_str}
 """
@@ -415,6 +423,14 @@ Respond to the user's latest message using the context below.
 
 CONTEXT:
 {result_context}
+
+IMPORTANT POINTS:
+- Do not answer queries that are not related to dating or match-making.
+- Do not answer questions like programming, math, or general knowledge.
+- Do not give advice on topics like health, finance, or legal matters.
+- Do not suggest actions outside of dating or match-making.
+- Politely set boundaries if the user goes off-topic.
+- Redirect the conversation back to dating and match-making.
 
 GLOBAL RULES:
 - Do NOT mention tools, systems, searches, or databases
