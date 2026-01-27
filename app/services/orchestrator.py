@@ -212,7 +212,6 @@ class OrchestratorService:
                         selected_tool,
                         session_id
                     )
-                    logger.info(f"Tool executed successfully")
                 else:
                     logger.warning("No tool selected in Step 2, skipping execution")
             
@@ -355,7 +354,7 @@ class OrchestratorService:
 
         return final_tool_args
     
-    async def _check_result_already_fetched( self, structured_result, selected_tool, user_id, session_id, final_tool_args):
+    async def _check_result_already_fetched( self, structured_result, selected_tool, user_id, session_id):
         if not structured_result or not isinstance(structured_result, dict):
             return False
 
@@ -366,27 +365,27 @@ class OrchestratorService:
         full_state = await redis_service.get_tool_state(user_id, session_id)
 
         # Tool-scoped namespace
-        tool_state = full_state.setdefault(selected_tool, {})
-        seen_docs = set(tool_state.get("seen_docs", []))
+        seen_docs_state = full_state.setdefault("_seen_docs", {})
+        seen_docs = set(seen_docs_state.get(selected_tool, []))
 
         seen = False
-        new_ids = []
+        all_ids = []
 
         for doc in docs:
-            doc_id = doc.get("id")
+            doc_id = doc.get("_id")
             if not doc_id:
                 continue
 
             if doc_id in seen_docs:
                 seen = True
-            else:
-                new_ids.append(doc_id)
+            
+            all_ids.append(doc_id)
 
         # Persist updated state
-        if new_ids:
-            seen_docs.update(new_ids)
-            tool_state["seen_docs"] = list(seen_docs)
-            full_state[selected_tool] = tool_state
+        if all_ids:
+            seen_docs.update(all_ids)
+            seen_docs_state[selected_tool] = list(seen_docs)
+            full_state["_seen_docs"] = seen_docs_state
             await redis_service.save_tool_state(user_id, full_state, session_id)
 
         return seen
@@ -413,17 +412,16 @@ class OrchestratorService:
         # ----------------------------------------
         # PAGINATION WITH BOUNDED RETRIES
         # ----------------------------------------
-        MAX_PAGINATION_RETRIES = 3
+        MAX_PAGINATION_RETRIES = 4
         attempts = 0
         current_result = structured_result
 
         while attempts < MAX_PAGINATION_RETRIES:
-            if not self._check_result_already_fetched(
+            if not await self._check_result_already_fetched(
                 current_result,
                 selected_tool,
                 user_id,
-                session_id,
-                final_tool_args,
+                session_id
             ):
                 # Fresh results found
                 return current_result
@@ -445,11 +443,13 @@ class OrchestratorService:
                 break
 
             attempts += 1
-
+        
+        #save page back to state
+        full_state = await redis_service.get_tool_state(user_id, session_id)
+        full_state[selected_tool] = final_tool_args
+        await redis_service.save_tool_state(user_id, full_state, session_id)
         # Best-effort return
         return current_result
-
-
 
 
     async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None):
@@ -491,14 +491,14 @@ class OrchestratorService:
         if not resp:
             raise Exception("Timeout waiting for Tool Args Step")
         
-        logger.info(f"Tool Args Response: {resp}")
+        # logger.info(f"Tool Args Response: {resp}")
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
         tool_args = resp.get("tool_args", {})
 
         if not tool_args:
             logger.info(f"No tool args returned: {resp}")
-            return None, {}, None
+            tool_args = {}
 
         if isinstance(tool_args, str):
             tool_args = json.loads(tool_args)
@@ -624,8 +624,6 @@ class OrchestratorService:
         }
         await redis_service.publish(f"chat_status:{request_id}", msg)
         logger.info(f"Completed request {request_id}")
-        
-        logger.info(f"Session Type {session_type}")
         if session_type == "2":
             # msg["audio_clip"]=text_to_audio(answer,voice_id)
             audio_stream = eleven_labs_audio_gen_service.text_to_audio(answer, voice_id)
@@ -633,7 +631,6 @@ class OrchestratorService:
                 audio_url = blob_storage_uploader_service.generate_url(audio_stream)
                 if audio_url:
                     msg["audio_clip"] = audio_url
-                    logger.info(f"Audio clip generated {msg['audio_clip']}")
         
         # Log to MongoDB
         log_data = {
@@ -896,7 +893,7 @@ class OrchestratorService:
             break
         
         if filters_changed:
-                merged["page"] = 1
+            merged["page"] = 1
         
         return merged
 

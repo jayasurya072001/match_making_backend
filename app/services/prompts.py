@@ -223,6 +223,7 @@ def get_tool_check_prompt(history_str: str = ""):
             - "girls above 25" 
             - "boys with beard" 
             - "happy looking women" 
+            - "can you show some girls profiles"
 
         --------------------------------------------------
 
@@ -246,13 +247,14 @@ def get_tool_check_prompt(history_str: str = ""):
 
         STEP 5 — INCOMPLETE SEARCH → "ask_clarification"
         Return "ask_clarification" ONLY if:
-        - User shows search intent
-        - AND provides ZERO actionable filter
+        - User shows search intent and provides ZERO actionable filter.
+        - There is no proper meaning in the user query. 
 
         Examples:
-        - "North India"
-        - "girls in Asia"
-        - "people in USA"
+        location focused
+            - "North India"
+            - "girls in Asia"
+            - "people in USA"
 
         --------------------------------------------------
 
@@ -265,25 +267,7 @@ def get_tool_check_prompt(history_str: str = ""):
         you MUST return "tool" — even if other details are missing.
 
         --------------------------------------------------
-        EXAMPLES:
-        --------------------------------------------------
 
-        User: "girls with curly hair in Delhi"
-        Output: {{ "decision": "tool" }}
-
-        User: "girls in North India"
-        Output: {{ "decision": "ask_clarification" }}
-
-        User: "North India"
-        Output: {{ "decision": "ask_clarification" }}
-
-        User: "sodij xjcdnjdk"
-        Output: {{ "decision": "gibberish" }}
-
-        User: "hello"
-        Output: {{ "decision": "no_tool" }}
-
-        --------------------------------------------------
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         {{
