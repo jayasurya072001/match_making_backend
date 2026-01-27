@@ -12,12 +12,14 @@ from app.core.config import settings
 from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
-from app.api.schemas import LLMRequest, SessionSummary
-from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt
+from app.api.schemas import LLMRequest, SessionSummary, SessionType
+from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt
-
+from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
+from app.utils.cache_persona import cache_persona
+from app.services.eleven_labs_audio_gen_service import eleven_labs_audio_gen_service
+from app.services.blob_storage_uploader_service import blob_storage_uploader_service
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +123,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None) -> str:
         """
         Public API: Spawns the orchestration task.
         """
@@ -135,11 +137,11 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
@@ -149,6 +151,34 @@ class OrchestratorService:
             
             # 1. Prepare Context
             history, session_summary, session = await self._prepare_context(user_id, session_id)
+
+            # 1.1 Fetch Person Profile if person_id provided
+            user_profile = None
+            if person_id:
+                try:
+                    # 1. Check Redis Cache
+                    user_profile = await redis_service.get_person_profile(user_id, person_id)
+                    
+                    if user_profile:
+                        logger.info(f"Cache hit for person profile {person_id}")
+                    else:
+                        # 2. Fetch from Mongo
+                        logger.info(f"Cache miss for person profile {person_id}, fetching from Mongo")
+                        projection = {"name": 1, "age": 1, "gender": 1, "address": 1, "country": 1, "tags": 1}
+                        user_profile = await mongo_service.get_profile(user_id, person_id, projection)
+                        
+                        if user_profile:
+                            # 3. Save to Redis Cache (TTL 1 day)
+                            # Convert _id to str if present to ensure JSON serialization
+                             if "_id" in user_profile:
+                                 user_profile["_id"] = str(user_profile["_id"])
+                                 
+                             await redis_service.save_person_profile_cache(user_id, person_id, user_profile)
+                             logger.info(f"Cached person profile for {person_id}")
+
+                except Exception as e:
+                    logger.error(f"Failed to fetch person profile {person_id}: {e}")
+
             
             # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
             tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
@@ -186,7 +216,7 @@ class OrchestratorService:
                 else:
                     logger.warning("No tool selected in Step 2, skipping execution")
             
-            elif decision in ("no_tool", "ask_clarification", "inappropriate_block"):
+            elif decision in ("no_tool", "ask_clarification", "inappropriate_block", "gibberish"):
                 logger.info(f"Decision={decision}, skipping tool execution")
 
             else:
@@ -194,7 +224,7 @@ class OrchestratorService:
 
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required, decision
+                tool_result_str, tool_args, structured_result, session_id, tool_required, decision, user_profile, personality_id, session_type
             )
                 
 
@@ -280,6 +310,10 @@ class OrchestratorService:
 
     async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None):
         """Step 3: Extract args for the SELECTED tool and execute."""
+        final_tool_args = {}
+        tool_result_str = None
+        structured_result = None
+
         tool_list = self._mcp_client.get_sections("tools")
         selected_tool_meta = next((t for t in tool_list if t.get("name") == selected_tool), None)
         
@@ -317,10 +351,6 @@ class OrchestratorService:
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
         tool_args = resp.get("tool_args", {})
-        
-        tool_result_str = None
-        structured_result = None
-        final_tool_args = {}
         
         if tool_args:
             await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
@@ -407,32 +437,46 @@ class OrchestratorService:
                 await self._send_status(request_id, "TOOL_ERROR", {"error": str(e)})
         else:
             logger.info(f"No tool received from the model due to some reason debug using this {resp}")
-            tool_result_str = None
-            final_tool_args = None
-            structured_result = None
         return tool_result_str, final_tool_args, structured_result
 
         
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
         formatted_history = format_history_for_prompt(history)
 
         personality = get_base_prompt()
+        voice_id = None
+        language=None
+        identity=None
+        if personality_id:
+            persona = await cache_persona.get_persona(user_id, personality_id)
+            if persona:
+                logger.info(f"Personality found for {user_id} and {personality_id}")
+                personality = persona_json_to_system_prompt(persona.get("personality"))
+                voice_id = persona.get("voice_id")
+                identity = persona.get("identity", {})
+                language=lines.append(f"- Languages: {', '.join(identity['languages'])}")
 
         if decision == 'ask_clarification':
-            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary)
+            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile)
         elif decision == 'tool':
             if structured_result and isinstance(structured_result, dict):
                 is_tool_result_check = len(structured_result.get("docs", [])) > 0
             else:
                 is_tool_result_check = False
-            default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary)
+            default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary, user_profile)
         elif decision == 'inappropriate_block':
-            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary)
+            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary, user_profile)
+        elif decision == 'gibberish':
+            default_prompt = get_gibberish_summary_prompt(formatted_history, personality, session_summary, user_profile)
         else:
-            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary)
+            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile)
+
+        SHORT_ANSWER_PROMPT="MANDATORY: ANSWER IN ONE SENTENCE. IF ABSOLUTELY NECESSARY, USE TWO SENTENCES. DO NOT ELABORATE OR PROVIDE UNNECESSARY DETAILS."
+        LANGUAGE_PROMPT=f"MANDATORY: RESPOND ONLY IN {language}. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
+        default_prompt=default_prompt+SHORT_ANSWER_PROMPT+LANGUAGE_PROMPT
 
         llm_req = LLMRequest(
             request_id=request_id,
@@ -452,12 +496,12 @@ class OrchestratorService:
         
         logger.info(f"Step 3 result: Summarize {resp}")
         if resp and resp.get("final_answer"):
-            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required)
+            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required, None, session_type, voice_id)
         else:
             await self._send_status(request_id, "NO_SUMMARY")
             await self._handle_error_response(request_id, user_id, session_id, query, "No Summary Generated")
 
-    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None):
+    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None, session_type: Optional[str] = None, voice_id: Optional[str] = None) :
         # Save to history
         await self.append_history(user_id, {"role": "assistant", "content": answer}, session_id)
         # Publish final event (mimic what SSE expects for closure)
@@ -473,6 +517,16 @@ class OrchestratorService:
         await redis_service.publish(f"chat_status:{request_id}", msg)
         logger.info(f"Completed request {request_id}")
         
+        logger.info(f"Session Type {session_type}")
+        if session_type == "2":
+            # msg["audio_clip"]=text_to_audio(answer,voice_id)
+            audio_stream = eleven_labs_audio_gen_service.text_to_audio(answer, voice_id)
+            if audio_stream:
+                audio_url = blob_storage_uploader_service.generate_url(audio_stream)
+                if audio_url:
+                    msg["audio_clip"] = audio_url
+                    logger.info(f"Audio clip generated {msg['audio_clip']}")
+        
         # Log to MongoDB
         log_data = {
             "request_id": request_id,
@@ -484,6 +538,7 @@ class OrchestratorService:
             "complete": True,
             "final_answer": answer,
             "tool_result": structured,
+            "voice_clip": msg.get("audio_clip", ""),
             "error": error,
             "metadata": {"user_id": user_id},
             "timestamp": time.time()
@@ -685,6 +740,7 @@ class OrchestratorService:
         Helper method to merge new tool args with persisted state.
         Returns the final merged dictionary for the SPECIFIC tool.
         """
+        final_tool_args = {}
         final_tool_args = new_args.copy()  # Start with what LLM extracted
 
         # 1. Load full nested state
@@ -692,9 +748,20 @@ class OrchestratorService:
         
         # 2. Extract specific tool section
         current_tool_args = full_state.get(selected_tool, {})
+
+        # 🔹 NEW: Normalize page intent
+        if "page" in final_tool_args:
+            prev_page = current_tool_args.get("page", 1)
+
+            if final_tool_args["page"] > 0:
+                # Next page intent
+                final_tool_args["page"] = prev_page + 1
+            elif final_tool_args["page"] == 0:
+                # page: 0 or anything else → reset
+                final_tool_args["page"] = 1
         
         # 3. Check for Reset
-        if new_args.get("_reset"):
+        if new_args.get("_reset"):  # Reset if _reset is present
             current_tool_args = {}
             final_tool_args.pop("_reset", None)
         
@@ -712,7 +779,7 @@ class OrchestratorService:
                 merged[k] = v
         
         # 5. Check for Filter Changes (Reset Page)
-        # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 0.
+        # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 1.
         filters_changed = False
         for k in final_tool_args:
             if k in ["page", "_reset", "user_id"]:
@@ -721,7 +788,7 @@ class OrchestratorService:
             break
         
         if filters_changed:
-                merged["page"] = 0
+                merged["page"] = 1
         
         return merged
 

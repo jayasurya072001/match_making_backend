@@ -75,7 +75,7 @@ class SearchRequest(BaseModel):
     geo_filter: Optional[GeoFilter] = None
     k: Optional[int] = 5
     limit_score: Optional[float] = 0.7
-    page: Optional[int] = 0
+    page: Optional[int] = 1
 
 class LLMRequest(BaseModel):
     request_id: str
@@ -162,3 +162,12 @@ class SessionSummary(BaseModel):
     important_points: List[str] = []
     user_details: List[str] = []
     last_updated: float = 0.0
+
+
+class PersonalityModel(BaseModel):
+    persona_id: Optional[str] = None
+    user_id: str
+    voice_id: Optional[str] = None
+    personality: Optional[Dict[str, Any]] = None
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)

@@ -6,6 +6,9 @@ from app.core.config import settings
 from app.api.schemas import SessionSummary
 import numpy as np
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RedisService:
     def __init__(self):
@@ -96,7 +99,7 @@ class RedisService:
         key = f"doc:{user_id}:{profile_data['id']}"
         await self.client.json().set(key, "$", profile_data)
 
-    async def search(self, user_id: str, query_vector: list[float] = None, filters: dict = None, geo_filter: dict = None, k: int = 5, page: int = 0):
+    async def search(self, user_id: str, query_vector: list[float] = None, filters: dict = None, geo_filter: dict = None, k: int = 5, page: int = 1):
         index_name = f"idx:{user_id}"
         
         # Base Query
@@ -353,6 +356,31 @@ class RedisService:
                     "tool_args": data
                 })
         return states
+
+    async def get_person_profile(self, user_id: str, person_id: str) -> dict:
+        """
+        Get cached person profile.
+        """
+        key = f"person_profile:{user_id}:{person_id}"
+        data = await self.client.get(key)
+        if data:
+            try:
+                return json.loads(data)
+            except:
+                pass
+        return None
+
+    async def save_person_profile_cache(self, user_id: str, person_id: str, profile_data: dict, ttl: int = 86400):
+        """
+        Cache person profile with TTL (default 1 day).
+        """
+        key = f"person_profile:{user_id}:{person_id}"
+        await self.client.set(key, json.dumps(profile_data), ex=ttl)
+    
+    async def close(self):
+        if self.client:
+            logger.info("Redis Connection Stopped")
+            await self.client.close()
 
 
 redis_service = RedisService()

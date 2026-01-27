@@ -1,5 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 from app.core.config import settings
+
+import datetime
 
 
 class MongoService:
@@ -7,6 +10,7 @@ class MongoService:
         self.client = AsyncIOMotorClient(settings.MONGO_URI)
         self.db = self.client[settings.MONGO_DB_NAME]
         self.chat_db = self.client[settings.MONGO_CHAT_DB]
+        self.personality_db = self.client[settings.MONGO_PERSONALITY_DB]
 
     async def check_connection(self):
         try:
@@ -91,5 +95,54 @@ class MongoService:
         collection = self.db[user_id]
         cursor = collection.find({"name": {"$regex": name_regex, "$options": "i"}}, projection).limit(limit)
         return await cursor.to_list(length=limit)
+
+    async def create_personality(self, user_id: str, persona_id: str, data: dict) -> dict:
+        """
+        Create a new personality for a user.
+        """
+        try:
+            collection = self.personality_db[user_id]
+            document = {
+                "_id": persona_id,
+                "user_id": user_id,
+                "persona_id": persona_id,
+                "voice_id": data["voice_id"],
+                "personality": data,
+                "created_at": datetime.datetime.utcnow(),
+                "updated_at": datetime.datetime.utcnow()
+            }
+            await collection.insert_one(document)
+            return document
+        except DuplicateKeyError:
+            raise ValueError("Personality already exists for this user")
+
+    async def get_personality(self, user_id: str, persona_id: str):
+        collection = self.personality_db[user_id]
+        return await collection.find_one({"persona_id": persona_id}, {"_id": 0})
+
+    async def update_personality(self, user_id: str, persona_id: str, data: dict):
+        collection = self.personality_db[user_id]
+        #updated_at should be updated
+        data = data.model_dump()
+        data["updated_at"] = datetime.datetime.utcnow()
+        data["user_id"] = user_id
+        data["persona_id"] = persona_id
+        await collection.update_one({"persona_id": persona_id}, {"$set": data})
+        return True
+
+    async def delete_personality(self, user_id: str, persona_id: str):
+        collection = self.personality_db[user_id]
+        await collection.delete_one({"persona_id": persona_id})
+        return True
+
+    async def list_personality(self, user_id: str):
+        collection = self.personality_db[user_id]
+        cursor = collection.find({}, {"_id": 0})
+        return await cursor.to_list(length=10)
+
+    async def delete_all_personality(self, user_id: str):
+        collection = self.personality_db[user_id]
+        await collection.drop()
+        return True
 
 mongo_service = MongoService()

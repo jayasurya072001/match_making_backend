@@ -13,3 +13,5 @@ opencv-python
 numpy
 mcp
 python-dotenv
+elevenlabs
+azure-storage-blob

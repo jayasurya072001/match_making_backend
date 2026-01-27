@@ -62,7 +62,7 @@ async def search_profiles(
     image_url: str | None = None,
     location: str | None = None,
     distance: int | None = 10,
-    page: int | None = 0,
+    page: int | None = 1,
     # Flattened Attributes
     min_age: int | None = None,
     max_age: int | None = None,
