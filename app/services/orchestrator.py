@@ -448,7 +448,7 @@ class OrchestratorService:
 
         personality = get_base_prompt()
         voice_id = None
-        language=None
+        language=""
         identity=None
         if personality_id:
             persona = await cache_persona.get_persona(user_id, personality_id)
@@ -456,8 +456,9 @@ class OrchestratorService:
                 logger.info(f"Personality found for {user_id} and {personality_id}")
                 personality = persona_json_to_system_prompt(persona.get("personality"))
                 voice_id = persona.get("voice_id")
-                identity = persona.get("identity", {})
-                language=lines.append(f"- Languages: {', '.join(identity['languages'])}")
+                identity = persona.get("personality", {}).get("identity", {})
+                if identity:
+                    language = f"- Languages: {', '.join(identity['languages'])}"
 
         if decision == 'ask_clarification':
             default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile)
@@ -475,7 +476,12 @@ class OrchestratorService:
             default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile)
 
         SHORT_ANSWER_PROMPT="MANDATORY: ANSWER IN ONE SENTENCE. IF ABSOLUTELY NECESSARY, USE TWO SENTENCES. DO NOT ELABORATE OR PROVIDE UNNECESSARY DETAILS."
-        LANGUAGE_PROMPT=f"MANDATORY: RESPOND ONLY IN {language}. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
+        # LANGUAGE_PROMPT=f"MANDATORY: RESPOND ONLY IN {language}. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
+        if language:
+            LANGUAGE_PROMPT = f"MANDATORY: SPEAK ONLY IN {', '.join(identity['languages'])}. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
+        else:
+            LANGUAGE_PROMPT = "MANDATORY: SPEAK ONLY IN ENGLISH. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
+
         default_prompt=default_prompt+SHORT_ANSWER_PROMPT+LANGUAGE_PROMPT
 
         llm_req = LLMRequest(
