@@ -370,6 +370,7 @@ class OrchestratorService:
 
         seen = False
         all_ids = []
+        count=0
 
         for doc in docs:
             doc_id = doc.get("_id")
@@ -377,9 +378,12 @@ class OrchestratorService:
                 continue
 
             if doc_id in seen_docs:
-                seen = True
+                count=count+1
             
             all_ids.append(doc_id)
+
+        if count>4:
+            seen=True
 
         # Persist updated state
         if all_ids:

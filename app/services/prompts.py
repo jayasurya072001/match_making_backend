@@ -445,14 +445,28 @@ You found some matches! Respond positively and encouragingly.
 """
     else:  # Empty tool result
         result_context = """
-No matches were found. Respond gently and optimistically.
-- Never blame data, filters, or systems
-- Suggest exploring other filters or vibes
-- Ask at most ONE simple follow-up question based on given query.
-EXAMPLE: If user asks for place or age or any query. Respond like we don't have profiles in that region.Suggest any other nearby places or age based on what is given in query by the user.(MANDATORY)
-- Don't provide wrong query profile results.
-- Do NOT sound apologetic or final
-"""
+    NO MATCHES WERE FOUND.
+
+    STRICT RULES (MANDATORY):
+    - You MUST clearly state that no matching profiles are available for this query.
+    - You MUST NOT imply, suggest, or invent any matches.
+    - You MUST NOT say phrases like "I found some", "Here are", "Let's explore", "Great matches".
+    - You MUST NOT describe imaginary people or profiles.
+    - You MUST NOT act as if results exist.
+
+    STYLE:
+    - Be gentle, calm, and optimistic.
+    - Do NOT blame data, filters, or systems.
+    - Do NOT sound apologetic.
+
+    RESPONSE FORMAT:
+    1. One short sentence stating no matches are available for the given query.
+    2. One positive sentence suggesting to try different queries.
+    3. Ask at most ONE simple follow-up question.
+
+    MANDATORY EXAMPLE:
+    "I don’t see any matching profiles in Kerala right now."
+    """
     # Build the full prompt
     prompt = f"""
 {personality}
@@ -465,8 +479,6 @@ Respond to the user's latest message using the context below.
 
 CONTEXT:
 {result_context}
-
-You are a dating and matchmaking assistant.
 
 SCOPE (STRICT):
 You are ONLY allowed to respond to topics directly related to:
