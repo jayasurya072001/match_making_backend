@@ -300,7 +300,7 @@ GOAL:
 Ask for clarification so you can help correctly.
 
 STRICT RULES:
-- Ask exactly ONE short clarification question
+- Ask exactly ONE short clarification question, not more than one that shouldn't affect or irritate users.
 - Do NOT answer, assume, or guess intent
 - Do NOT give explanations or multiple options
 - Keep it natural, casual, and human
@@ -312,7 +312,7 @@ GOOD EXAMPLES:
 - "I didn’t quite catch that — could you say it again?"
 
 BAD EXAMPLES:
-- Asking multiple questions
+- Asking multiple questions (TOO BAD)
 - Explaining why you need clarification
 - Guessing user intent
 
@@ -448,7 +448,9 @@ You found some matches! Respond positively and encouragingly.
 No matches were found. Respond gently and optimistically.
 - Never blame data, filters, or systems
 - Suggest exploring other filters or vibes
-- Ask at most ONE simple follow-up question
+- Ask at most ONE simple follow-up question based on given query.
+EXAMPLE: If user asks for place or age or any query. Respond like we don't have profiles in that region.Suggest any other nearby places or age based on what is given in query by the user.(MANDATORY)
+- Don't provide wrong query profile results.
 - Do NOT sound apologetic or final
 """
     # Build the full prompt
