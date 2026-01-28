@@ -80,7 +80,46 @@ async def search_profiles(
     fore_head_height: Optional[Literal["low", "high"]] = None,
     eyewear: Optional[Literal["prescription_glasses", "sunglasses"]] = None,
     headwear: Optional[Literal["hat", "cap", "turban"]] = None,
-    eyebrow: Optional[Literal["present", "absent"]] = None
+    eyebrow: Optional[Literal["present", "absent"]] = None,
+    
+    # New Fields
+    mole: Optional[str] = None,
+    scars: Optional[str] = None,
+    earrings: Optional[str] = None,
+
+    attire: Optional[str] = None,
+    body_shape: Optional[str] = None,
+    lip_stick: Optional[str] = None,
+    skin_color: Optional[str] = None,
+    eye_size: Optional[str] = None,
+    face_size: Optional[str] = None,
+    face_structure: Optional[str] = None,
+    hair_length: Optional[str] = None,
+
+    # Numeric Ranges
+    min_height: Optional[float] = None,
+    max_height: Optional[float] = None,
+    min_weight: Optional[int] = None,
+    max_weight: Optional[int] = None,
+    min_annual_income: Optional[int] = None,
+    max_annual_income: Optional[int] = None,
+
+    # Categorical
+    diet: Optional[str] = None,
+    drinking: Optional[str] = None,
+    smoking: Optional[str] = None,
+    family_type: Optional[str] = None,
+    family_values: Optional[str] = None,
+    father_occupation: Optional[str] = None,
+    mother_occupation: Optional[str] = None,
+    highest_qualification: Optional[str] = None,
+    marital_status: Optional[str] = None,
+    mother_tongue: Optional[str] = None,
+    profession: Optional[str] = None,
+    religion: Optional[str] = None,
+    speaking_languages: Optional[str] = None
+
+
 ) -> Any:
     """
         Search and filter people profiles using structured attributes and optional image similarity.
@@ -127,7 +166,40 @@ async def search_profiles(
         "fore_head_height": fore_head_height,
         "eyewear": eyewear,
         "headwear": headwear,
-        "eyebrow": eyebrow
+        "eyebrow": eyebrow,
+        
+        "mole": mole,
+        "scars": scars,
+        "earrings": earrings,
+        
+        "attire": attire,
+        "body_shape": body_shape,
+        "lip_stick": lip_stick,
+        "skin_color": skin_color,
+        "eye_size": eye_size,
+        "face_size": face_size,
+        "face_structure": face_structure,
+        "hair_length": hair_length,
+        
+        "height": {"min": min_height, "max": max_height} if (min_height is not None or max_height is not None) else None,
+        "weight": {"min": min_weight, "max": max_weight} if (min_weight is not None or max_weight is not None) else None,
+        "annual_income": {"min": min_annual_income, "max": max_annual_income} if (min_annual_income is not None or max_annual_income is not None) else None,
+        
+        "diet": diet,
+        "drinking": drinking,
+        "smoking": smoking,
+        "family_type": family_type,
+        "family_values": family_values,
+        "father_occupation": father_occupation,
+        "mother_occupation": mother_occupation,
+        "highest_qualification": highest_qualification,
+        "marital_status": marital_status,
+        "mother_tongue": mother_tongue,
+        "profession": profession,
+        "religion": religion,
+        "speaking_languages": speaking_languages
+
+
     }
     
     # Filter out None values
