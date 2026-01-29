@@ -23,6 +23,21 @@ API_BASE_URL = "http://localhost:8000/api/v1/profiles"
 # Initialize FastMCP Server
 mcp = FastMCP("SmritDB Search Service")
 
+def normalize_range(min_val, max_val, min_default, max_default, cast_type):
+    if min_val is None and max_val is None:
+        return None
+
+    if min_val is None:
+        min_val = min_default
+
+    if max_val is None:
+        max_val = max_default
+
+    return {
+        "min": cast_type(min_val),
+        "max": cast_type(max_val)
+    }
+
 async def geocode_location(
     location: str,
     api_key: str = OPENCAGE_API_KEY
@@ -149,10 +164,27 @@ async def search_profiles(
 
     # 1. Construct Filters Dict from flattened args
     # We map local args to the SearchFilters schema structure expected by the API
+
+    # Normalize numeric ranges
+    age_range = normalize_range(min_age, max_age, 18, 80, int)
+
+    height_range = normalize_range(
+        min_height, max_height, 0.0, 9.0, float
+    )
+
+    weight_range = normalize_range(
+        min_weight, max_weight, 0, 300, int
+    )
+
+    income_range = normalize_range(
+        min_annual_income, max_annual_income, 0, 1000, int
+    )
+
+
     attributes_dict = {
         "gender": gender,
         # We need to construct age filter carefully
-        "age": {"min": min_age, "max": max_age} if (min_age is not None or max_age is not None) else None,
+        "age": age_range,
         "age_group": age_group,
         "ethnicity": ethnicity,
         "face_shape": face_shape,
@@ -181,9 +213,9 @@ async def search_profiles(
         "face_structure": face_structure,
         "hair_length": hair_length,
         
-        "height": {"min": min_height, "max": max_height} if (min_height is not None or max_height is not None) else None,
-        "weight": {"min": min_weight, "max": max_weight} if (min_weight is not None or max_weight is not None) else None,
-        "annual_income": {"min": min_annual_income, "max": max_annual_income} if (min_annual_income is not None or max_annual_income is not None) else None,
+        "height": height_range,
+        "weight": weight_range,
+        "annual_income": income_range,
         
         "diet": diet,
         "drinking": drinking,
