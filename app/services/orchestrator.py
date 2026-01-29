@@ -16,7 +16,7 @@ from app.api.schemas import LLMRequest, SessionSummary, SessionType
 from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
+from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
 from app.utils.cache_persona import cache_persona
 from app.services.eleven_labs_audio_gen_service import eleven_labs_audio_gen_service
 from app.services.blob_storage_uploader_service import blob_storage_uploader_service
