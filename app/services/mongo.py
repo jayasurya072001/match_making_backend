@@ -93,7 +93,8 @@ class MongoService:
             "tags": 1
         }
         collection = self.db[user_id]
-        cursor = collection.find({"name": {"$regex": name_regex, "$options": "i"}}, projection).limit(limit)
+        # cursor = collection.find({"name": {"$regex": name_regex, "$options": "i"}}, projection).limit(limit)
+        cursor = collection.find({"name": {"$regex": f"^{name_regex}$", "$options": "i"}},projection).limit(limit)
         return await cursor.to_list(length=limit)
 
     async def create_personality(self, user_id: str, persona_id: str, data: dict) -> dict:
