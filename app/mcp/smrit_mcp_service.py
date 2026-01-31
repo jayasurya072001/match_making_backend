@@ -74,6 +74,7 @@ async def geocode_location(
 @mcp.tool()
 async def search_profiles(
     user_id: str,
+    name: str | None = None,
     image_url: str | None = None,
     location: str | None = None,
     distance: int | None = 10,
@@ -182,6 +183,7 @@ async def search_profiles(
 
 
     attributes_dict = {
+        "name": name,
         "gender": gender,
         # We need to construct age filter carefully
         "age": age_range,

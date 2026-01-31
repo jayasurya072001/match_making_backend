@@ -48,6 +48,9 @@ class RedisService:
                 # Numeric Age
                 NumericField("$.age", as_name="age"),
                 
+                # Name (Root level)
+                TagField("$.name", as_name="name"),
+                
                 # Image Attributes - Flattened Indexing
                 TagField("$.image_attributes.face_shape", as_name="face_shape"),
                 TagField("$.image_attributes.head_hair", as_name="head_hair"),
