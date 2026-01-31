@@ -154,7 +154,7 @@ class RedisService:
                      else:
                          # Simple TAG support: @field:{value}
                          query_parts.append(f"@{field}:{{{value}}}")
-        
+        logging.info(filters.items())
         # 2. Geo Filter
         if geo_filter:
             # Syntax: @geo_field:[lon lat radius unit]

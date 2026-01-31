@@ -495,7 +495,7 @@ class OrchestratorService:
         if not resp:
             raise Exception("Timeout waiting for Tool Args Step")
         
-        # logger.info(f"Tool Args Response: {resp}")
+        logger.info(f"Tool Args Response: {resp}")
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
         tool_args = resp.get("tool_args", {})

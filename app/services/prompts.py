@@ -480,10 +480,11 @@ You found some matches! Respond positively and encouragingly.
     RESPONSE FORMAT:
     1. One short sentence stating no matches are available for the given query.
     2. One positive sentence suggesting to try different queries.
+    3. Suggestion query should be only based on recent conversation.(IMPORTANT AND MANDATORY)
     3. Ask at most ONE simple follow-up question.
 
     MANDATORY EXAMPLE:
-    "I don’t see any matching profiles in Kerala right now."
+    "I don’t see any matching profiles in Assam right now."
     """
     # Build the full prompt
     prompt = f"""
