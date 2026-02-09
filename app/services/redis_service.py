@@ -48,6 +48,9 @@ class RedisService:
                 # Numeric Age
                 NumericField("$.age", as_name="age"),
                 
+                # Name (Root level)
+                TagField("$.name", as_name="name"),
+                
                 # Image Attributes - Flattened Indexing
                 TagField("$.image_attributes.face_shape", as_name="face_shape"),
                 TagField("$.image_attributes.head_hair", as_name="head_hair"),
@@ -65,7 +68,40 @@ class RedisService:
                 TagField("$.image_attributes.face_geometry.fore_head_height", as_name="fore_head_height"),
                 TagField("$.image_attributes.accessories.eyewear", as_name="eyewear"),
                 TagField("$.image_attributes.accessories.headwear", as_name="headwear"),
-                TagField("$.image_attributes.facial_features.Eyebrow", as_name="eyebrow")
+                TagField("$.image_attributes.facial_features.Eyebrow", as_name="eyebrow"),
+                TagField("$.image_attributes.facial_features.mole", as_name="mole"),
+                TagField("$.image_attributes.facial_features.scars", as_name="scars"),
+                TagField("$.image_attributes.accessories.earrings", as_name="earrings"),
+
+                # New Numeric Fields
+                NumericField("$.image_attributes.height", as_name="height"),
+                NumericField("$.image_attributes.weight", as_name="weight"),
+                NumericField("$.image_attributes.annual_income", as_name="annual_income"),
+                NumericField("$.image_attributes.brothers", as_name="brothers"),
+                NumericField("$.image_attributes.sisters", as_name="sisters"),
+
+                # New Tag Fields 
+                TagField("$.image_attributes.attire", as_name="attire"),
+                TagField("$.image_attributes.body_shape", as_name="body_shape"),
+                TagField("$.image_attributes.lip_stick", as_name="lip_stick"),
+                TagField("$.image_attributes.skin_color", as_name="skin_color"),
+                TagField("$.image_attributes.eye_size", as_name="eye_size"),
+                TagField("$.image_attributes.face_size", as_name="face_size"),
+                TagField("$.image_attributes.face_structure", as_name="face_structure"),
+                TagField("$.image_attributes.hair_length", as_name="hair_length"),
+                TagField("$.image_attributes.diet", as_name="diet"),
+                TagField("$.image_attributes.drinking", as_name="drinking"),
+                TagField("$.image_attributes.smoking", as_name="smoking"),
+                TagField("$.image_attributes.family_type", as_name="family_type"),
+                TagField("$.image_attributes.family_values", as_name="family_values"),
+                TagField("$.image_attributes.father_occupation", as_name="father_occupation"),
+                TagField("$.image_attributes.mother_occupation", as_name="mother_occupation"),
+                TagField("$.image_attributes.highest_qualification", as_name="highest_qualification"),
+                TagField("$.image_attributes.marital_status", as_name="marital_status"),
+                TagField("$.image_attributes.mother_tongue", as_name="mother_tongue"),
+                TagField("$.image_attributes.profession", as_name="profession"),
+                TagField("$.image_attributes.religion", as_name="religion"),
+                TagField("$.image_attributes.speaking_languages", as_name="speaking_languages")
             ]
             
             definition = IndexDefinition(prefix=[prefix], index_type=IndexType.JSON)
@@ -110,7 +146,7 @@ class RedisService:
         query_parts = []
         
         # 1. Attribute Filters
-        if filters:
+        if filters is not None:
             for field, value in filters.items():
                 if value:
                      if isinstance(value, dict) and ("min" in value or "max" in value):
@@ -121,7 +157,7 @@ class RedisService:
                      else:
                          # Simple TAG support: @field:{value}
                          query_parts.append(f"@{field}:{{{value}}}")
-        
+        # logging.info(filters.items())
         # 2. Geo Filter
         if geo_filter:
             # Syntax: @geo_field:[lon lat radius unit]

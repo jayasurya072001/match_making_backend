@@ -23,6 +23,21 @@ API_BASE_URL = "http://localhost:8000/api/v1/profiles"
 # Initialize FastMCP Server
 mcp = FastMCP("SmritDB Search Service")
 
+def normalize_range(min_val, max_val, min_default, max_default, cast_type):
+    if min_val is None and max_val is None:
+        return None
+
+    if min_val is None:
+        min_val = min_default
+
+    if max_val is None:
+        max_val = max_default
+
+    return {
+        "min": cast_type(min_val),
+        "max": cast_type(max_val)
+    }
+
 async def geocode_location(
     location: str,
     api_key: str = OPENCAGE_API_KEY
@@ -59,6 +74,7 @@ async def geocode_location(
 @mcp.tool()
 async def search_profiles(
     user_id: str,
+    name: str | None = None,
     image_url: str | None = None,
     location: str | None = None,
     distance: int | None = 10,
@@ -80,7 +96,46 @@ async def search_profiles(
     fore_head_height: Optional[Literal["low", "high"]] = None,
     eyewear: Optional[Literal["prescription_glasses", "sunglasses"]] = None,
     headwear: Optional[Literal["hat", "cap", "turban"]] = None,
-    eyebrow: Optional[Literal["present", "absent"]] = None
+    eyebrow: Optional[Literal["present", "absent"]] = None,
+    
+    # New Fields
+    mole: Optional[str] = None,
+    scars: Optional[str] = None,
+    earrings: Optional[str] = None,
+
+    attire: Optional[str] = None,
+    body_shape: Optional[str] = None,
+    lip_stick: Optional[str] = None,
+    skin_color: Optional[str] = None,
+    eye_size: Optional[str] = None,
+    face_size: Optional[str] = None,
+    face_structure: Optional[str] = None,
+    hair_length: Optional[str] = None,
+
+    # Numeric Ranges
+    min_height: Optional[float] = None,
+    max_height: Optional[float] = None,
+    min_weight: Optional[int] = None,
+    max_weight: Optional[int] = None,
+    min_annual_income: Optional[int] = None,
+    max_annual_income: Optional[int] = None,
+
+    # Categorical
+    diet: Optional[str] = None,
+    drinking: Optional[str] = None,
+    smoking: Optional[str] = None,
+    family_type: Optional[str] = None,
+    family_values: Optional[str] = None,
+    father_occupation: Optional[str] = None,
+    mother_occupation: Optional[str] = None,
+    highest_qualification: Optional[str] = None,
+    marital_status: Optional[str] = None,
+    mother_tongue: Optional[str] = None,
+    profession: Optional[str] = None,
+    religion: Optional[str] = None,
+    speaking_languages: Optional[str] = None
+
+
 ) -> Any:
     """
         Search and filter people profiles using structured attributes and optional image similarity.
@@ -110,10 +165,28 @@ async def search_profiles(
 
     # 1. Construct Filters Dict from flattened args
     # We map local args to the SearchFilters schema structure expected by the API
+
+    # Normalize numeric ranges
+    age_range = normalize_range(min_age, max_age, 18, 80, int)
+
+    height_range = normalize_range(
+        min_height, max_height, 0.0, 9.0, float
+    )
+
+    weight_range = normalize_range(
+        min_weight, max_weight, 0, 300, int
+    )
+
+    income_range = normalize_range(
+        min_annual_income, max_annual_income, 0, 1000, int
+    )
+
+
     attributes_dict = {
+        "name": name,
         "gender": gender,
         # We need to construct age filter carefully
-        "age": {"min": min_age, "max": max_age} if (min_age is not None or max_age is not None) else None,
+        "age": age_range,
         "age_group": age_group,
         "ethnicity": ethnicity,
         "face_shape": face_shape,
@@ -127,7 +200,40 @@ async def search_profiles(
         "fore_head_height": fore_head_height,
         "eyewear": eyewear,
         "headwear": headwear,
-        "eyebrow": eyebrow
+        "eyebrow": eyebrow,
+        
+        "mole": mole,
+        "scars": scars,
+        "earrings": earrings,
+        
+        "attire": attire,
+        "body_shape": body_shape,
+        "lip_stick": lip_stick,
+        "skin_color": skin_color,
+        "eye_size": eye_size,
+        "face_size": face_size,
+        "face_structure": face_structure,
+        "hair_length": hair_length,
+        
+        "height": height_range,
+        "weight": weight_range,
+        "annual_income": income_range,
+        
+        "diet": diet,
+        "drinking": drinking,
+        "smoking": smoking,
+        "family_type": family_type,
+        "family_values": family_values,
+        "father_occupation": father_occupation,
+        "mother_occupation": mother_occupation,
+        "highest_qualification": highest_qualification,
+        "marital_status": marital_status,
+        "mother_tongue": mother_tongue,
+        "profession": profession,
+        "religion": religion,
+        "speaking_languages": speaking_languages
+
+
     }
     
     # Filter out None values

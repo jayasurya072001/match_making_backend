@@ -1,8 +1,9 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import DuplicateKeyError
 from app.core.config import settings
-
+import re
 import datetime
+import logging
 
 
 class MongoService:
@@ -79,6 +80,16 @@ class MongoService:
         return await collection.find_one({"request_id": request_id}, {"_id": 0})
 
     async def search_profiles_by_name(self, user_id: str, name_regex: str, limit: int = 1):
+
+        name_regex=re.sub(r'[^a-zA-Z0-9\s]', '', name_regex)
+        logging.info(f"Name regex:{name_regex}")
+
+        if len(name_regex) <3:
+            name_regex = f"^{re.escape(name_regex)}"
+            limit=6
+        else:
+            name_regex = f"^{re.escape(name_regex)}$"
+
         projection = {
             "_id": 1,
             "customId": 1,
@@ -93,7 +104,11 @@ class MongoService:
             "tags": 1
         }
         collection = self.db[user_id]
-        cursor = collection.find({"name": {"$regex": name_regex, "$options": "i"}}, projection).limit(limit)
+        # cursor = collection.find({"name": {"$regex": name_regex, "$options": "i"}}, projection).limit(limit)
+        cursor = collection.find(
+            {"name": {"$regex": name_regex, "$options": "i"}},
+            projection
+        ).limit(limit)
         return await cursor.to_list(length=limit)
 
     async def create_personality(self, user_id: str, persona_id: str, data: dict) -> dict:

@@ -3,7 +3,7 @@ from app.api.schemas import UserProfile, SearchRequest
 from app.services.mongo import mongo_service
 from app.services.redis_service import redis_service
 from app.services.embedding import embedding_service
-from app.utils.random import generate_random_id
+from app.utils.random_utils import generate_random_id
 import logging
 
 logger = logging.getLogger(__name__)
