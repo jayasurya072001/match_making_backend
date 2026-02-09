@@ -247,6 +247,9 @@ class OrchestratorService:
     async def _step_check_tool(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any) -> bool:
         """Step 1: Determine if tool is required."""
         # Inject History
+        tool_list = self._mcp_client.get_sections("tools")
+        formatted_history=format_history_for_prompt(history)
+
         formatted_tool_descriptions = self._mcp_client.format_tool_descriptions_for_llm(tool_list)
         check_system_prompt = get_tool_check_prompt(formatted_history, formatted_tool_descriptions)
 
@@ -551,6 +554,9 @@ class OrchestratorService:
     async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
+
+        tool_list = self._mcp_client.get_sections("tools")
+
         formatted_history = format_history_for_prompt(history)
         formatted_tool_descriptions = self._mcp_client.format_tool_descriptions_for_llm(tool_list)
 
