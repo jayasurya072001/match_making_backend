@@ -730,3 +730,27 @@ user profile: Use this to engage with the user in a natural way if provided.
 session summary: Use this to understand the context of the conversation if needed.
 {session_summary if session_summary else ""}
 """
+
+def get_filler_prompt(
+    formatted_history: str,
+    user_message:str,
+    session_summary: str | None = None
+) -> str:
+    return f"""
+    "You are generating a short conversational filler message.\n"
+    "Purpose: acknowledge the user while processing.\n\n"
+
+    "Rules:\n"
+    "- Do NOT answer the user's question.\n"
+    "- Do NOT give advice.\n"
+    "- Do NOT summarize.\n"
+    "- Do NOT repeat the user's words.\n"
+    "- Keep it under 15 words.\n"
+    "- Sound natural and friendly.\n"
+    "- Output ONLY the filler message.\n\n"
+
+    f"Context:\n"
+    f"Session Summary: {session_summary}\n"
+    f"Recent History: {formatted_history}\n"
+    f"Current Input: {user_message}\n\n"
+"""

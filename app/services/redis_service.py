@@ -101,7 +101,8 @@ class RedisService:
                 TagField("$.image_attributes.mother_tongue", as_name="mother_tongue"),
                 TagField("$.image_attributes.profession", as_name="profession"),
                 TagField("$.image_attributes.religion", as_name="religion"),
-                TagField("$.image_attributes.speaking_languages", as_name="speaking_languages")
+                TagField("$.image_attributes.speaking_languages", as_name="speaking_languages"),
+                TagField("$.tags", as_name="tags")
             ]
             
             definition = IndexDefinition(prefix=[prefix], index_type=IndexType.JSON)
@@ -154,10 +155,14 @@ class RedisService:
                          min_val = value.get("min", "-inf")
                          max_val = value.get("max", "+inf")
                          query_parts.append(f"@{field}:[{min_val} {max_val}]")
+                     elif isinstance(value, list):
+                         # OR-query for list of values: @field:{v1 | v2 ...}
+                         # Escape values if needed, but assuming simple alphanumeric for now
+                         val_str = " | ".join(str(v) for v in value)
+                         query_parts.append(f"@{field}:{{{val_str}}}")
                      else:
                          # Simple TAG support: @field:{value}
                          query_parts.append(f"@{field}:{{{value}}}")
-        # logging.info(filters.items())
         # 2. Geo Filter
         if geo_filter:
             # Syntax: @geo_field:[lon lat radius unit]

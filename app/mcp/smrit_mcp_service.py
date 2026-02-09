@@ -99,18 +99,18 @@ async def search_profiles(
     eyebrow: Optional[Literal["present", "absent"]] = None,
     
     # New Fields
-    mole: Optional[str] = None,
+    mole: Optional[Literal["Normal", "Unibrow"]] = None, 
     scars: Optional[str] = None,
     earrings: Optional[str] = None,
 
-    attire: Optional[str] = None,
-    body_shape: Optional[str] = None,
-    lip_stick: Optional[str] = None,
-    skin_color: Optional[str] = None,
-    eye_size: Optional[str] = None,
-    face_size: Optional[str] = None,
-    face_structure: Optional[str] = None,
-    hair_length: Optional[str] = None,
+    attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None, 
+    body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None, 
+    lip_stick: Optional[Literal["no", "yes", "none"]] = None, 
+    skin_color: Optional[Literal["white", "black", "none", "brown"]] = None,
+    eye_size: Optional[Literal["normal", "large", "small", "None"]] = None, 
+    face_size: Optional[Literal["large", "medium", "small"]] = None, 
+    face_structure: Optional[Literal["symmetric", "asymmetric"]] = None, 
+    hair_length: Optional[Literal["long", "medium", "short"]] = None,
 
     # Numeric Ranges
     min_height: Optional[float] = None,
@@ -121,19 +121,23 @@ async def search_profiles(
     max_annual_income: Optional[int] = None,
 
     # Categorical
-    diet: Optional[str] = None,
-    drinking: Optional[str] = None,
-    smoking: Optional[str] = None,
-    family_type: Optional[str] = None,
-    family_values: Optional[str] = None,
-    father_occupation: Optional[str] = None,
-    mother_occupation: Optional[str] = None,
-    highest_qualification: Optional[str] = None,
-    marital_status: Optional[str] = None,
-    mother_tongue: Optional[str] = None,
-    profession: Optional[str] = None,
-    religion: Optional[str] = None,
-    speaking_languages: Optional[str] = None
+    diet: Optional[Literal["veg", "nonveg", "egg", "jain"]] = None, 
+    drinking: Optional[Literal["yes", "no"]] = None, 
+    smoking: Optional[Literal["yes", "no"]] = None, 
+    family_type: Optional[Literal["nuclear", "joint"]] = None, 
+    family_values: Optional[Literal["traditional", "moderate", "liberal"]] = None, 
+    father_occupation: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
+    mother_occupation: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
+    highest_qualification: Optional[Literal["phd", "graduate", "post graduate", "diploma"]] = None, 
+    marital_status: Optional[Literal["single"]] = None, 
+    mother_tongue: Optional[Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"]] = None, 
+    profession: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
+    religion: Optional[Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"]] = None, 
+    
+    # Simple strings/lists but typed as str for MCP simplicity (comma-sep)
+    # The prompt actually lists specific options for speaking_languages too but as a list example.
+    speaking_languages: Optional[str] = None, 
+    tags: Optional[str] = None # comma separated tags
 
 
 ) -> Any:
@@ -146,12 +150,14 @@ async def search_profiles(
         - Filter by location and distance
         - Refine or continue a previous profile search
         - Request more results from an existing search
+        - Filter by tags (e.g. "verified", "active")
 
         Behavior:
         - All filters are OPTIONAL and can be combined
         - Only provided arguments are applied
         - Pagination is controlled using `page` (increment page to get more results)
         - This tool does NOT perform name-based lookup
+        - `tags` should be a comma-separated string if multiple
 
         Do NOT use this tool when:
         - The user is only chatting or asking general questions
@@ -181,6 +187,14 @@ async def search_profiles(
         min_annual_income, max_annual_income, 0, 1000, int
     )
 
+    # Convert tags string to list if present
+    tags_list = [t.strip() for t in tags.split(',')] if tags else None
+    
+    # Convert speaking_languages to list if present and comma-sep
+    # Check if speaking_languages is intended as single or list? 
+    # Usually speaking_languages is a list in DB, but query might be single.
+    # The prompt comment says `speaking_languages: Optional[str] = None #["tamil", ...]`
+    # I'll pass it as is (str) or list if needed. Existing code passed it directly.
 
     attributes_dict = {
         "name": name,
@@ -231,7 +245,8 @@ async def search_profiles(
         "mother_tongue": mother_tongue,
         "profession": profession,
         "religion": religion,
-        "speaking_languages": speaking_languages
+        "speaking_languages": speaking_languages,
+        "tags": tags_list
 
 
     }
