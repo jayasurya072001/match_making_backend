@@ -146,7 +146,7 @@ class RedisService:
         query_parts = []
         
         # 1. Attribute Filters
-        if filters:
+        if filters is not None:
             for field, value in filters.items():
                 if value:
                      if isinstance(value, dict) and ("min" in value or "max" in value):
@@ -157,7 +157,7 @@ class RedisService:
                      else:
                          # Simple TAG support: @field:{value}
                          query_parts.append(f"@{field}:{{{value}}}")
-        logging.info(filters.items())
+        # logging.info(filters.items())
         # 2. Geo Filter
         if geo_filter:
             # Syntax: @geo_field:[lon lat radius unit]

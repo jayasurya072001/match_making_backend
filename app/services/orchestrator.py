@@ -341,8 +341,9 @@ class OrchestratorService:
         tool_meta = self._get_selected_tool_meta(tool_list, selected_tool)
         tool_schema = tool_meta.get("input_schema", {})
 
-        # Inject user_id
+        # Inject user_id and page if missing so by default it takes page 1
         final_tool_args["user_id"] = user_id
+        final_tool_args["page"] = final_tool_args.get("page", 1)
 
         # Validate & clean
         final_tool_args = validate_and_clean_tool_args(final_tool_args, tool_schema)
@@ -354,19 +355,13 @@ class OrchestratorService:
 
         return final_tool_args
     
-    async def _check_result_already_fetched( self, structured_result, selected_tool, user_id, session_id):
+    async def _check_result_already_fetched( self, structured_result, selected_tool, user_id, session_id, seen_docs):
         if not structured_result or not isinstance(structured_result, dict):
             return False
 
         docs = structured_result.get("docs", [])
         if not docs:
             return False
-
-        full_state = await redis_service.get_tool_state(user_id, session_id)
-
-        # Tool-scoped namespace
-        seen_docs_state = full_state.setdefault("_seen_docs", {})
-        seen_docs = set(seen_docs_state.get(selected_tool, []))
 
         seen = False
         all_ids = []
@@ -384,15 +379,8 @@ class OrchestratorService:
 
         if count>4:
             seen=True
-
-        # Persist updated state
-        if all_ids:
-            seen_docs.update(all_ids)
-            seen_docs_state[selected_tool] = list(seen_docs)
-            full_state["_seen_docs"] = seen_docs_state
-            await redis_service.save_tool_state(user_id, full_state, session_id)
-
-        return seen
+            
+        return seen, all_ids
 
 
     async def _handle_auto_reset_and_pagination( self, structured_result, selected_tool, user_id, session_id, final_tool_args):
@@ -400,6 +388,12 @@ class OrchestratorService:
             return structured_result
 
         docs = structured_result.get("docs", [])
+        
+        full_state = await redis_service.get_tool_state(user_id, session_id)
+        
+        # Tool-scoped namespace
+        seen_docs_state = full_state.setdefault("_seen_docs", {})
+        seen_docs = set(seen_docs_state.get(selected_tool, []))
 
         # ----------------------------------------
         # AUTO-RESET LOGIC
@@ -408,7 +402,6 @@ class OrchestratorService:
             logger.info(
                 f"Tool {selected_tool} returned 0 results. Auto-resetting state."
             )
-            full_state = await redis_service.get_tool_state(user_id, session_id)
             full_state.pop(selected_tool, None)
             await redis_service.save_tool_state(user_id, full_state, session_id)
             return structured_result
@@ -419,40 +412,48 @@ class OrchestratorService:
         MAX_PAGINATION_RETRIES = 4
         attempts = 0
         current_result = structured_result
-
+        
+        # Avoid mutating original args
+        tool_args = dict(final_tool_args)
+        
         while attempts < MAX_PAGINATION_RETRIES:
-            if not await self._check_result_already_fetched(
-                current_result,
-                selected_tool,
-                user_id,
-                session_id
-            ):
-                # Fresh results found
-                return current_result
+            
+            seen, all_ids = await self._check_result_already_fetched(current_result, selected_tool, user_id, session_id, seen_docs)
+            # ✅ Always update seen docs when IDs exist
+            if all_ids:
+                seen_docs.update(all_ids)
+
+            # ✅ If fresh results found → break loop
+            if not seen:
+                break
 
             logger.info(
                 f"Duplicate results detected for tool={selected_tool}. "
                 f"Retry {attempts + 1}/{MAX_PAGINATION_RETRIES}"
             )
 
-            # Increment page safely (page 1 → 2 → 3 ...)
-            final_tool_args["page"] = final_tool_args.get("page", 1) + 1
+            # Increment page safely
+            tool_args["page"] = tool_args.get("page", 1) + 1
 
-            new_res = await self._mcp_client.call_tool(
-                selected_tool, final_tool_args
-            )
+            new_res = await self._mcp_client.call_tool(selected_tool, tool_args)
             current_result = self._parse_mcp_output(new_res)
 
-            if not current_result or not isinstance(current_result, dict):
+            if not isinstance(current_result, dict):
                 break
 
             attempts += 1
         
-        #save page back to state
-        full_state = await redis_service.get_tool_state(user_id, session_id)
-        full_state[selected_tool] = final_tool_args
+        # ----------------------------------------
+        # SAVE STATE ONCE
+        # ----------------------------------------
+        seen_docs_state[selected_tool] = list(seen_docs)
+        full_state["_seen_docs"] = seen_docs_state
+        full_state[selected_tool] = tool_args
+
         await redis_service.save_tool_state(user_id, full_state, session_id)
-        # Best-effort return
+
+        logger.info(f"Final tool args saved: {tool_args}")
+
         return current_result
 
 

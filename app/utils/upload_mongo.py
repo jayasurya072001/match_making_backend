@@ -330,6 +330,10 @@ def main():
         "image_attributes.diet": {
         "$exists": True,
         "$ne": ""
+        },
+        "name": {
+        "$exists": True,
+        "$ne": ""
         }
     }
 

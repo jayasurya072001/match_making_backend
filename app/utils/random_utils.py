@@ -19,31 +19,44 @@ def deep_clean_tool_args(obj):
     return obj
 
 def validate_and_clean_tool_args(args: dict, tool_schema: dict) -> dict:
-    """
-    Validates and cleans tool arguments against a given JSON schema.
-    Keeps only keys defined in the schema properties and removes empty values.
-    """
     if not isinstance(args, dict) or not isinstance(tool_schema, dict):
         return args
 
     properties = tool_schema.get("properties", {})
-    allowed_keys = set(properties.keys())
-    
-    # We always allow 'user_id' for our internal handling if it's not in schema but we inject it
-    # However, MCP tools usually have user_id in their schema anyway.
-    
     cleaned = {}
+
     for k, v in args.items():
-        if k in allowed_keys:
-            # Clean value (standard logic)
-            if v not in ("", None) and not (isinstance(v, (list, dict)) and len(v) == 0):
-                if isinstance(v, dict) and "properties" in properties.get(k, {}):
-                    # Recursive clean for nested objects if defined in schema
-                     cleaned[k] = validate_and_clean_tool_args(v, properties[k])
-                else:
-                    cleaned[k] = v
-                    
+        if k not in properties:
+            continue  # key not allowed
+
+        schema_def = properties[k]
+
+        # Remove empty values
+        if v in ("", None) or (isinstance(v, (list, dict)) and len(v) == 0):
+            continue
+
+        # ✅ ENUM validation
+        if "enum" in schema_def and v not in schema_def["enum"]:
+            print(f"⚠️ Invalid value '{v}' for field '{k}', allowed: {schema_def['enum']}")
+            continue  # drop invalid enum value
+
+        # ✅ TYPE validation (optional but recommended)
+        expected_type = schema_def.get("type")
+        if expected_type == "integer" and not isinstance(v, int):
+            continue
+        if expected_type == "number" and not isinstance(v, (int, float)):
+            continue
+        if expected_type == "string" and not isinstance(v, str):
+            continue
+
+        # ✅ Nested object validation
+        if isinstance(v, dict) and "properties" in schema_def:
+            cleaned[k] = validate_and_clean_tool_args(v, schema_def)
+        else:
+            cleaned[k] = v
+
     return cleaned
+
 
 
 tools_specific_promtps = {
@@ -179,8 +192,5 @@ def persona_json_to_system_prompt(persona: dict) -> str:
         lines.append(f"\nHUMOR STYLE: {persona['humor']}")
     if persona.get("expert_level"):
         lines.append(f"EXPERT LEVEL: {persona['expert_level']}")
-
-    if persona.get("response_language"):
-        lines.append(f"MANDATORY RESPONSE LANGUAGE: {persona['response_language']}")
 
     return "\n".join(lines)
