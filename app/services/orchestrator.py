@@ -247,8 +247,8 @@ class OrchestratorService:
     async def _step_check_tool(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any) -> bool:
         """Step 1: Determine if tool is required."""
         # Inject History
-        formatted_history = format_history_for_prompt(history)
-        check_system_prompt = get_tool_check_prompt(formatted_history)
+        formatted_tool_descriptions = self._mcp_client.format_tool_descriptions_for_llm(tool_list)
+        check_system_prompt = get_tool_check_prompt(formatted_history, formatted_tool_descriptions)
 
         llm_req = LLMRequest(
             request_id=request_id,
@@ -552,6 +552,7 @@ class OrchestratorService:
         """Step 3: Generate final answer."""
         # Prepare Context
         formatted_history = format_history_for_prompt(history)
+        formatted_tool_descriptions = self._mcp_client.format_tool_descriptions_for_llm(tool_list)
 
         personality = get_base_prompt()
         voice_id = None
@@ -568,7 +569,7 @@ class OrchestratorService:
                     language = f"- Languages: {', '.join(identity['languages'])}"
 
         if decision == 'ask_clarification':
-            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile)
+            default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
         elif decision == 'tool':
             if structured_result and isinstance(structured_result, dict):
                 is_tool_result_check = len(structured_result.get("docs", [])) > 0
@@ -576,11 +577,11 @@ class OrchestratorService:
                 is_tool_result_check = False
             default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary, user_profile)
         elif decision == 'inappropriate_block':
-            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary, user_profile)
+            default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
         elif decision == 'gibberish':
-            default_prompt = get_gibberish_summary_prompt(formatted_history, personality, session_summary, user_profile)
+            default_prompt = get_gibberish_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
         else:
-            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile)
+            default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
 
         SHORT_ANSWER_PROMPT="MANDATORY: ANSWER IN ONE SENTENCE. IF ABSOLUTELY NECESSARY, USE TWO SENTENCES. DO NOT ELABORATE OR PROVIDE UNNECESSARY DETAILS."
         # LANGUAGE_PROMPT=f"MANDATORY: RESPOND ONLY IN {language}. DO NOT USE ANY OTHER LANGUAGE OR MIX LANGUAGES IN YOUR RESPONSE."
@@ -665,9 +666,9 @@ class OrchestratorService:
         metrics_service.record_request_complete(duration=0.0) # Placeholder duration or calc if possible
         
         # Trigger Background Summary Update
-        asyncio.create_task(self._background_summary_update(user_id, answer, tool_args, session_id))
+        asyncio.create_task(self._background_summary_update(user_id, query, answer, session_id))
 
-    async def _background_summary_update(self, user_id: str, answer: str, tool_args: Any, session_id: Optional[str] = None):
+    async def _background_summary_update(self, user_id: str, query: str, answer: str, session_id: Optional[str] = None):
         try:
             # 1. Get current summary
             summary = await redis_service.get_session_summary(user_id, session_id)
@@ -676,7 +677,8 @@ class OrchestratorService:
             prompt = get_summary_update_prompt()
             input_ctx = f"""
             Current Summary: {summary.model_dump_json()}
-            Last Assistant Answer: {answer}
+            User Query: {query}
+            Assistant Answer: {answer}
             """
             
             # 3. Call LLM (using the same Kafka/Response flow is hard because it's async background)

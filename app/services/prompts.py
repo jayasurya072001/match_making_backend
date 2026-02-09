@@ -130,7 +130,8 @@ def get_summary_update_prompt():
  
     INPUTS PROVIDED:
     1. Current Session Summary (JSON)
-    2. Last Assistant Answer (for context only)
+    2. User query (Create summary points based on this)
+    3. Assistant Answer for the user query (for context only, Do not include these in the output)
  
     YOUR TASK:
     Update and return the Session Summary JSON.
@@ -164,7 +165,7 @@ def get_summary_update_prompt():
     - Return the updated Summary JSON
     """
 
-def get_tool_check_prompt(history_str: str = ""):
+def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: str = ""):
     return f"""
         You are a TOOL ROUTING DECISION ENGINE.
 
@@ -172,7 +173,7 @@ def get_tool_check_prompt(history_str: str = ""):
         Be deterministic. Do not explain your reasoning.
 
         YOUR JOB:
-        Decide what the assistant should do NEXT based on the user's latest input.
+        Decide what the assistant should do NEXT based on the user's latest query.
 
         You must choose EXACTLY ONE decision.
 
@@ -191,7 +192,7 @@ def get_tool_check_prompt(history_str: str = ""):
         Use when the user message contains sexual, explicit, or pornographic language
 
         4. "ask_clarification"
-        Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query.
+        Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query, conside only the user query dont use history to decide this block.
 
         5. "gibberish"
         Use when the user input is gibberish or random characters.
@@ -220,10 +221,8 @@ def get_tool_check_prompt(history_str: str = ""):
         --------------------------------------------------
         STEP 3 — VALID SEARCH → "tool"
         Return "tool" if:
-        - The user wants to find/search/list people
-        - AND mentions AT LEAST ONE attribute such as:
-            gender, hair_style, hair_color, age, ethnicity,
-            face, appearance, emotion, or a specific city
+        - If the user query matches these tools description
+        - {formatted_tool_descriptions}
 
         Examples:
             - "curly hair girls" 
@@ -256,10 +255,11 @@ def get_tool_check_prompt(history_str: str = ""):
         Return "ask_clarification" ONLY if:
         - User shows search intent and provides ZERO actionable filter.
         - There is no proper meaning in the user query. 
+        - Asks like show outside this place (Ex show matched outside chennai)
 
         The following are ALWAYS considered INVALID and INCOMPLETE:
         - Continents (Asia, Europe, etc.)
-        - Countries without country (India, USA, UK, etc.)
+        - Countries (India, USA, UK, etc.)
         - Regions (North India, South India, West Asia, Middle East, etc.)
         - Vague areas (near me, nearby, around here, my place)
 
@@ -299,7 +299,8 @@ def get_clarification_summary_prompt(
     history_str: str,
     personality: str,
     session_summary: Any = None,
-    user_profile: Dict[str, Any] = None
+    user_profile: Dict[str, Any] = None,
+    formatted_tool_descriptions: str = None
 ) -> str:
     prompt = f"""
 {personality}
@@ -314,6 +315,9 @@ You can answer if user asked about your personal questions(MANDATORY)
 
 GOAL:
 Ask for clarification so you can help correctly.
+
+Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
+- {formatted_tool_descriptions}
 
 STRICT RULES:
 - Ask exactly ONE short clarification question, not more than one that shouldn't affect or irritate users.
@@ -352,7 +356,8 @@ def get_no_tool_summary_prompt(
     history_str: str,
     personality: str,
     session_summary: Any = None,
-    user_profile: Dict[str, Any] = None
+    user_profile: Dict[str, Any] = None,
+    formatted_tool_descriptions: str = None
 ) -> str:
     prompt = f"""
 {personality}
@@ -366,6 +371,9 @@ Every response MUST be short like 1 or 2 sentences.
 Use longer response only when necessary
 
 You are a dating and matchmaking assistant.
+
+Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
+- {formatted_tool_descriptions}
 
 SCOPE (STRICT — NO EXCEPTIONS):
 You are ONLY allowed to respond to topics directly related to:
@@ -402,10 +410,7 @@ If the user asks ANYTHING outside dating/matchmaking:
 6) DO NOT give examples.
 7) DO NOT add extra commentary.
 
-You MUST respond with ONLY this message:
-
-"I'm here only to help with dating and match-making...  
-If you'd like, you can ask me something related to dating, relationships, or finding a match."
+You MUST respond ONLY in this context - "I'm here only to help with dating and match-making...(add any custom text related to the context)" 
 
 NO ADDITIONAL TEXT.
 NO EXPLANATIONS.
@@ -610,7 +615,8 @@ def get_inappropriate_summary_prompt(
     history_str: str, 
     personality: str, 
     session_summary: Any = None,
-    user_profile: Dict[str, Any] = None
+    user_profile: Dict[str, Any] = None,
+    formatted_tool_descriptions: str = None
 ) -> str:
     prompt=  f"""
 {personality}
@@ -623,6 +629,9 @@ RESPONSE MODE:
 - If the message is abusive or hostile → set a firm but calm boundary without engaging
 
 You can answer if user asked about your personal questions(MANDATORY)
+
+Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
+- {formatted_tool_descriptions}
 
 RULES:
 - Do NOT engage with the content
@@ -702,7 +711,8 @@ def get_gibberish_summary_prompt(
     formatted_history: str,
     personality: str,
     session_summary: str | None = None,
-    user_profile: dict | None = None
+    user_profile: dict | None = None,
+    formatted_tool_descriptions: str | None = None
 ) -> str:
     return f"""
 You are a friendly assistant.
@@ -729,7 +739,11 @@ user profile: Use this to engage with the user in a natural way if provided.
 
 session summary: Use this to understand the context of the conversation if needed.
 {session_summary if session_summary else ""}
+
+Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
+- {formatted_tool_descriptions}
 """
+
 
 def get_filler_prompt(
     formatted_history: str,
