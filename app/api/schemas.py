@@ -197,6 +197,10 @@ class ChatRequestBody(BaseModel):
             "4 -> speech to speech"
         )
     )
+    fillers: Optional[bool]=Field(
+        False,
+        description="Optional fillers that needs to be filled while waiting for the response"
+    )
 
 class SessionSummary(BaseModel):
     user_id: str

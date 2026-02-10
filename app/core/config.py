@@ -16,7 +16,11 @@ class Settings(BaseSettings):
     ELEVEN_LABS_API_KEY: str
     AZURE_STORAGE_CONNECTION_STRING: str
     AZURE_STORAGE_CONTAINER_NAME: str
-
+    AZURE_OPENAI_ENDPOINT : str
+    AZURE_DEPLOYMENT : str
+    AZURE_API_KEY : str
+    AZURE_API_VERSION : str
+ 
     class Config:
         env_file = ".env"
 
