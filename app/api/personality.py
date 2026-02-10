@@ -52,6 +52,7 @@ async def delete_personality(
 ):
     try:
         await personality_service.delete(user_id, persona_id)
+        await cache_persona.delete_persona(user_id, persona_id)
         return {"status": "success"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) 

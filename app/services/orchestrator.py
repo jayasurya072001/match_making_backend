@@ -27,11 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 FALLBACK_MESSAGES = [
-    "I'm having a bit of trouble connecting right now. Could you please try asking that again?",
-    "It seems my thoughts got a little tangled. Mind repeating that?",
-    "I didn't quite catch that due to a technical hiccup. Please try again.",
-    "Sorry, I encountered a temporary issue. Let's try that one more time.",
-    "I'm experiencing a brief service interruption. Please ask me again in a moment."
+"Just checking the compatibility charts. Give me a moment to find your perfect response! Try checking back in about an hour.",
+"Even the best matches take a second to spark. I’m resetting—hang tight. Let's reconnect in 2 hours.",
+"Stepping out to consult the 'Love Guru' files. I'll have an update for you if you try again in about 90 minutes.",
+"Think of this as a quick commercial break between soulmates. Give me about an hour to get things back on track.",
+"Technical glitch in the chemistry lab. We're working on the spark—try us again in a couple of hours." 
 ]
 
 class OrchestratorService:
