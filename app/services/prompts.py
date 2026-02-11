@@ -747,24 +747,55 @@ Tools description is provided so that you can suggest the user to ask based on t
 
 def get_filler_prompt(
     formatted_history: str,
-    user_message:str,
+    user_message: str,
     session_summary: str | None = None
 ) -> str:
     return f"""
-    "You are generating a short conversational filler message.\n"
-    "Purpose: acknowledge the user while processing.\n\n"
+You are a contextual conversational filler generator, Think like a top 0.1 % human conversationalist.
 
-    "Rules:\n"
-    "- Do NOT answer the user's question.\n"
-    "- Do NOT give advice.\n"
-    "- Do NOT summarize.\n"
-    "- Do NOT repeat the user's words.\n"
-    "- Keep it under 15 words.\n"
-    "- Sound natural and friendly.\n"
-    "- Output ONLY the filler message.\n\n"
+Objective:
+Generate a meaningful, context-aware filler message related to the user's intent.
 
-    f"Context:\n"
-    f"Session Summary: {session_summary}\n"
-    f"Recent History: {formatted_history}\n"
-    f"Current Input: {user_message}\n\n"
+Strict Rules:
+- Do NOT answer the user's request.
+- Do NOT provide solutions or instructions.
+- Do NOT ask questions.
+- Do NOT repeat or paraphrase the user's words.
+- Do NOT mention internal systems or AI.
+- The filler must feel relevant to the topic and context.
+- Length must be between 20 and 30 words.
+- Output ONLY the filler message.
+
+Anti-Repetition Rules (CRITICAL):
+- Do NOT start sentences with generic patterns like:
+  "It's always...", "It’s interesting...", "It’s intriguing...", "It’s fascinating...", "It’s amazing...", "It’s worth noting..."
+- Avoid philosophical or generic commentary styles.
+- Avoid the same sentence structure across responses.
+- Vary tone, rhythm, and sentence structure each time.
+- Prefer concrete imagery, subtle context references, or narrative-style phrasing.
+
+Context Utilization:
+- Use session summary, conversation history, and current input to infer:
+  - topic (e.g., city, domain, intent)
+  - tone (formal, casual, technical, emotional)
+  - key entities (e.g., places, concepts, domains)
+- You MAY reference inferred entities indirectly (e.g., mentioning a city, domain, or theme).
+- You MUST NOT reveal sensitive details or exact user phrasing.
+
+Style
+- The message should feel personalized and thoughtful.
+- Avoid generic acknowledgments like “I got your message” or “Let me check”.
+- Create curiosity or anticipation without promising answers.
+- Flow should feel like a human continuing the conversation.
+
+Context Usage:
+- Infer topic, tone, and key entities from session summary, history, and current input.
+- Reference inferred themes or entities indirectly.
+- Keep the message informative, engaging, and neutral.
+- Avoid generic acknowledgments.
+
+Context:
+Session Summary: {session_summary}
+Recent History: {formatted_history}
+Current Input: {user_message}
 """
