@@ -5,6 +5,8 @@ import asyncio
 from typing import Any
 import aiohttp
 from typing import Optional, Tuple, Literal
+import json
+import os
 
 
 LOGGING_FORMAT = "[%(asctime)s] %(levelname)s %(name)s:%(lineno)d - %(message)s"
@@ -338,6 +340,127 @@ async def search_person_by_name(
         return f"Error: {str(e)}"
 
 
+
+
+def load_recommendations():
+    """Load recommendations from the JSON file."""
+    try:
+        # Construct path relative to this file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        json_path = os.path.join(current_dir, 'recommendations.json')
+        
+        if not os.path.exists(json_path):
+            logger.error(f"Recommendations file not found at: {json_path}")
+            return {}
+            
+        with open(json_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading recommendations: {e}")
+        return {}
+
+@mcp.tool()
+async def get_profile_recommendations(
+    query: str,
+    gender: Optional[Literal["male", "female"]] = None
+) -> Any:
+    """
+    Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
+
+    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types") 
+    and specific search attributes. It returns curated 'visual archetypes' that the user can select 
+    to trigger a specific search.
+
+    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
+    1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
+       - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
+       - "Modern", "Stylish", "Trendy", "Fashionable", "Western" -> Returns 'Modern/Trendy' archetype.
+       - "Professional", "Corporate", "Working", "Career oriented" -> Returns 'Professional' archetype.
+       - "Traditional", "Orthodox", "Ethnic" -> Returns 'Traditional' archetype.
+    
+    2. APPEARANCE DESCRIPTORS (Maps to 'Cute', 'Beautiful'):
+       - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
+       - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
+
+    DO NOT USE THIS TOOL IF:
+    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". 
+      In that case, use `search_profiles` directly.
+    - The user asks for a specific person by name.
+
+    Returns:
+    - A list of visual cards (archetypes) containing an image_url and a set of predefined attributes 
+      corresponding to that style.
+    """
+    query = query.lower()
+    
+    # Load recommendations data dynamically
+    RECOMMENDATIONS = load_recommendations()
+    
+    recommendations = []
+    
+    # Simple keyword matching
+    target_styles = []
+    
+    # 1. Homely / Simple
+    if any(k in query for k in ["homely", "simple", "family", "down to earth", "traditional"]):
+        target_styles.append("homely")
+        # Traditional is often synonymous with homely in this context, but we can keep them distinct if needed.
+        # If user explicitly asks for "traditional", we can add both.
+        if "traditional" in query:
+             target_styles.append("traditional")
+    
+    # 2. Professional / Corporate
+    if any(k in query for k in ["professional", "corporate", "working", "job", "career", "educated", "office"]):
+        target_styles.append("professional")
+
+    # 3. Modern / Stylish / Trendy
+    if any(k in query for k in ["modern", "stylish", "trendy", "fashion", "western", "cool"]):
+        target_styles.append("modern")
+
+    # 4. Cute
+    if "cute" in query or "bubbly" in query or "chocolate" in query:
+        target_styles.append("cute")
+        
+    # 5. Beautiful / Handsome
+    if any(k in query for k in ["beautiful", "handsome", "good looking", "pretty", "attractive", "radiant", "dashing"]):
+        target_styles.append("beautiful")
+        
+    # Determine gender from query if not provided
+    if not gender:
+        if any(k in query for k in ["girl", "woman", "female", "lady", "bride", "wife", "partner"]):
+            gender = "female"
+        elif any(k in query for k in ["boy", "man", "male", "guy", "groom", "husband"]):
+            gender = "male"
+            
+    # Collect recommendations
+    for style in target_styles:
+        if style in RECOMMENDATIONS:
+            style_data = RECOMMENDATIONS[style]
+            
+            # If gender is known, return only that gender
+            if gender and gender in style_data:
+                 recommendations.extend(style_data[gender])
+            
+            # If gender is unknown, return both
+            elif not gender:
+                 if "female" in style_data:
+                     recommendations.extend(style_data["female"])
+                 if "male" in style_data:
+                     recommendations.extend(style_data["male"])
+
+    if not recommendations:
+        # Fallback if no specific style matches, maybe return a mix or ask for clarification?
+        # For this tool, better to return empty or a suggestion message.
+        return {
+            "message": "No specific style recommendations found. Try keywords like 'traditional', 'modern', 'cute'.",
+            "recommendations": []
+        }
+        
+    return {
+        "message": f"Here are some visual styles based on '{query}':",
+        "recommendations": recommendations,
+        "instruction": "Select a profile to continue search with these visual attributes."
+    }
 
 if __name__ == "__main__":
     mcp.run()
