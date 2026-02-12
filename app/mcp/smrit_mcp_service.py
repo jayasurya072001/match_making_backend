@@ -453,12 +453,13 @@ async def get_profile_recommendations(
         # For this tool, better to return empty or a suggestion message.
         return {
             "message": "No specific style recommendations found. Try keywords like 'traditional', 'modern', 'cute'.",
-            "recommendations": []
+            "docs": []
         }
         
     return {
         "message": f"Here are some visual styles based on '{query}':",
-        "recommendations": recommendations,
+        "recommendation": True,
+        "docs": recommendations,
         "instruction": "Select a profile to continue search with these visual attributes."
     }
 

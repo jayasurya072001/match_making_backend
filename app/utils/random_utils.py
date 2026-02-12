@@ -64,6 +64,13 @@ tools_specific_promtps = {
         EXTRACTION RULES
         1. If user requests for specific name then output {{"name": "name"}}
     """,
+      "get_profile_recommendations": """
+        EXTRACTION RULES
+        1. Extract the main descriptive or style keywords into `query` (e.g., "traditional", "simple", "corporate", "cute").
+        2. Detect `gender` from context (e.g. "girl"/"woman" -> "female", "boy"/"man" -> "male").
+        3. Do not include unrelated words in `query`.
+        4. Output {{"query": "...", "gender": "..."}} (gender is optional).
+    """,
     "search_profiles": """
         EXTRACTION RULES
         1. Dont Mix the values of one argument to another argument.
