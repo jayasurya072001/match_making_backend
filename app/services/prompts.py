@@ -194,7 +194,10 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         4. "ask_clarification"
         Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query, conside only the user query dont use history to decide this block.
 
-        5. "gibberish"
+        5. "intro"
+        Use when the user asks about the agent.
+
+        6. "gibberish"
         Use when the user input is gibberish or random characters.
 
         --------------------------------------------------
@@ -272,7 +275,18 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
 
         --------------------------------------------------
 
-        STEP 6 — DEFAULT → "no_tool"
+        STEP 6 - Introduction Block - "intro"
+        Return "intro" ONLY if:
+        - The user asks about the agent.
+
+        Examples:
+            - "who are you"
+            - "what is your name"
+            - "who are you"
+
+        --------------------------------------------------
+
+        STEP 7 — DEFAULT → "no_tool"
         All other inputs must return "no_tool".
 
         OVERRIDE RULE:
@@ -285,7 +299,7 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         {{
-        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "no_tool"
+        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "intro" | "no_tool"
         }}
 
         --------------------------------------------------
@@ -743,6 +757,41 @@ session summary: Use this to understand the context of the conversation if neede
 Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
 - {formatted_tool_descriptions}
 """
+
+def get_intro_summary_prompt(formatted_history, personality, session_summary, user_profile, formatted_tool_descriptions):
+    return f"""
+You are an AI agent. The user has asked about you.
+
+Core rule:
+- Use the Personality section as the primary source of truth for all information about the agent.
+- Answer only what the user explicitly asked.
+- Do not add unnecessary introduction or details unless required by the question.
+
+Response guidelines:
+- If the user asks about identity → briefly introduce yourself using the personality.
+- If the user asks about experience → respond using only relevant details from the personality.
+- If the user asks about capabilities → describe capabilities based on the personality.
+- If the user asks about behavior or style → explain it using the personality.
+- Keep responses concise, relevant, and aligned with the personality.
+- Use session summary or history only if it adds meaningful context.
+- Mention tools only when relevant to explaining capabilities.
+
+Personality (primary source of agent information):
+{personality}
+
+Session Summary:
+{session_summary}
+
+User Profile:
+{user_profile or ""}
+
+Conversation History:
+{formatted_history or ""}
+
+Available Tools:
+{formatted_tool_descriptions}
+"""
+
 
 
 def get_filler_prompt(
