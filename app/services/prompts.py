@@ -194,7 +194,7 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         4. "ask_clarification"
         Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query, conside only the user query dont use history to decide this block.
 
-        5. "intro"
+        5. "about_agent"
         Use when the user asks about the agent.
 
         6. "gibberish"
@@ -275,8 +275,8 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
 
         --------------------------------------------------
 
-        STEP 6 - Introduction Block - "intro"
-        Return "intro" ONLY if:
+        STEP 6 - About the Agent - "about_agent"
+        Return "about_agent" ONLY if:
         - The user asks about the agent.
 
         Examples:
@@ -299,7 +299,7 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         {{
-        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "intro" | "no_tool"
+        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "about_agent" | "no_tool"
         }}
 
         --------------------------------------------------
@@ -758,9 +758,9 @@ Tools description is provided so that you can suggest the user to ask based on t
 - {formatted_tool_descriptions}
 """
 
-def get_intro_summary_prompt(formatted_history, personality, session_summary, user_profile, formatted_tool_descriptions):
+def get_about_agent_prompt(formatted_history, personality, session_summary, user_profile, formatted_tool_descriptions):
     return f"""
-You are an AI agent. The user has asked about you.
+You are an AI agent. The user has asked certain information about you.
 
 Core rule:
 - Use the Personality section as the primary source of truth for all information about the agent.
