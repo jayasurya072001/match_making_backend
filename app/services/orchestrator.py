@@ -123,7 +123,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None) -> str:
         """
         Public API: Spawns the orchestration task.
         """
@@ -137,11 +137,11 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type, recommendation_ids))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
@@ -181,8 +181,20 @@ class OrchestratorService:
                     logger.error(f"Failed to fetch person profile {person_id}: {e}")
 
             
+            
+            # Inject recommendations if present
+            if recommendation_ids:
+                rec_details = self._get_recommendation_details(recommendation_ids)
+                if rec_details:
+                    logger.info(f"Injecting recommendations into query: {recommendation_ids}")
+                    query = f"{query}\n\n[System Note: User has selected the following recommendations. Use this context.]\n{rec_details}"
+
             # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
-            tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
+            if recommendation_ids:
+                logger.info("Forcing tool decision due to recommendation_ids")
+                tool_required = {"decision": "tool"}
+            else:
+                tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
 
             decision = tool_required.get("decision") if tool_required else None
             logger.info(f"Step 1 result: Desicion {decision}")
@@ -235,6 +247,31 @@ class OrchestratorService:
     # --------------------------
     # Orchestration Steps
     # --------------------------
+    def _get_recommendation_details(self, recommendation_ids: List[str]) -> str:
+        try:
+            # Construct absolute path to ensure we find the file
+            # Assuming app run from root match_making_backend
+            file_path = os.path.abspath("app/mcp/recommendations.json")
+            if not os.path.exists(file_path):
+                 logger.error(f"Recommendations file not found at {file_path}")
+                 return ""
+
+            with open(file_path, "r") as f:
+                data = json.load(f)
+            
+            matches = []
+            # Traverse: category -> gender -> list of profiles
+            for category, genders in data.items():
+                for gender, profiles in genders.items():
+                    for profile in profiles:
+                         if profile.get("id") in recommendation_ids:
+                             matches.append(json.dumps(profile))
+            
+            return "\n".join(matches)
+        except Exception as e:
+            logger.error(f"Error loading recommendations: {e}")
+            return ""
+
     async def _prepare_context(self, user_id: str, session_id: Optional[str] = None):
         """Fetches history and session summary to build context string."""
         history = await self.get_history(user_id, session_id) 
