@@ -267,6 +267,7 @@ class OrchestratorService:
                          if profile.get("id") in recommendation_ids:
                              matches.append(json.dumps(profile))
             
+            logger.info(f"Recommendation match details:{matches}")
             return "\n".join(matches)
         except Exception as e:
             logger.error(f"Error loading recommendations: {e}")
