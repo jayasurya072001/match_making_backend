@@ -47,6 +47,7 @@
         "male": [
             {
                 "id": "trad_m_1",
+                "recommendation": true,
                 "name": "Traditional Groom",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/traditional_male_1.jpg",
                 "image_attributes": {
@@ -67,6 +68,7 @@
         "female": [
             {
                 "id": "home_f_1",
+                "recommendation": true,
                 "name": "Simple & Homely",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/homely_female_1.jpg",
                 "image_attributes": {
@@ -90,6 +92,7 @@
         "male": [
             {
                 "id": "home_m_1",
+                "recommendation": true,
                 "name": "Simple & Down-to-Earth",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/homely_male_1.jpg",
                 "image_attributes": {
@@ -108,6 +111,7 @@
         "female": [
             {
                 "id": "prof_f_1",
+                "recommendation": true,
                 "name": "Corporate Professional",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/professional_female_1.jpg",
                 "image_attributes": {
@@ -126,6 +130,7 @@
         "male": [
             {
                 "id": "prof_m_1",
+                "recommendation": true,
                 "name": "Corporate Professional",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/professional_male_1.jpg",
                 "image_attributes": {
@@ -146,6 +151,7 @@
         "female": [
             {
                 "id": "mod_f_1",
+                "recommendation": true,
                 "name": "Modern Chic",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/modern_female_1.jpg",
                 "image_attributes": {
@@ -165,6 +171,7 @@
             },
             {
                 "id": "trend_f_1",
+                "recommendation": true,
                 "name": "Trendy Fashionista",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/trendy_female_1.jpg",
                 "image_attributes": {
@@ -181,6 +188,7 @@
         "male": [
             {
                 "id": "mod_m_1",
+                "recommendation": true,
                 "name": "Urban Professional",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/modern_male_1.jpg",
                 "image_attributes": {
@@ -198,6 +206,7 @@
             },
             {
                 "id": "trend_m_1",
+                "recommendation": true,
                 "name": "Trendy & Stylish",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/trendy_male_1.jpg",
                 "image_attributes": {
@@ -215,6 +224,7 @@
         "female": [
             {
                 "id": "cute_f_1",
+                "recommendation": true,
                 "name": "Bubbly Charm",
                 "image_url": "https://i.pinimg.com/1200x/46/73/e0/4673e0cf8aa1e9d4aeb294ac13384141.jpg",
                 "image_attributes": {
@@ -232,6 +242,7 @@
         "male": [
             {
                 "id": "cute_m_1",
+                "recommendation": true,
                 "name": "Chocolate Boy",
                 "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/cute_male_1.jpg",
                 "image_attributes": {
@@ -251,16 +262,14 @@
             {
                 "id": "beat_f_1",
                 "name": "Radiant Beauty",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/beautiful_female_1.jpg",
+                "image_url": "https://i.pinimg.com/736x/18/48/c0/1848c0bf97cc3e932fcd9a4aed3421f9.jpg",
                 "image_attributes": {
                     "gender": "Female",
                     "face_structure": "Symmetric",
                     "skin_color": "Fair",
-                    "hair_length": "Long",
-                    "hair": {
-                        "hair_style": "Straight"
-                    },
-                    "eye_color": "Hazel",
+                    "hair_length": "Medium",
+                    "hair_style": "Wavy",
+                    "eye_color": "black",
                     "attire": "western"
                 }
             }

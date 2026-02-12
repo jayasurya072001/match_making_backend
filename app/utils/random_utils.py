@@ -64,12 +64,21 @@ tools_specific_promtps = {
         EXTRACTION RULES
         1. If user requests for specific name then output {{"name": "name"}}
     """,
-      "get_profile_recommendations": """
+    "get_profile_recommendations": """
         EXTRACTION RULES
         1. Extract the main descriptive or style keywords into `query` (e.g., "traditional", "simple", "corporate", "cute").
         2. Detect `gender` from context (e.g. "girl"/"woman" -> "female", "boy"/"man" -> "male").
         3. Do not include unrelated words in `query`.
         4. Output {{"query": "...", "gender": "..."}} (gender is optional).
+    """,
+    "cross_regional_visual_search": """
+        EXTRACTION RULES
+        1. SPLIT the request into TWO parts: "TARGET Identity" (Who to find) and "REFERENCE Visuals" (What they look like).
+        2. `target_identity_filter`: Must be a valid JSON string of filters for the TARGET.
+            - Example: "Tamil girl" -> '{{"mother_tongue": "Tamil", "gender": "Female"}}'
+        3. `visual_reference_query`: Must be a valid JSON string of filters for the REFERENCE look.
+            - Example: "Short hair like a Bengali" -> '{{"mother_tongue": "Bengali", "hair_style": "Short"}}'
+        4. OUTPUT must be valid JSON with these two keys containing STRINGIFIED JSON values.
     """,
     "search_profiles": """
         EXTRACTION RULES
