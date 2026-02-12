@@ -4,7 +4,7 @@
             {
                 "id": "trad_f_1",
                 "name": "Classic Traditional",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/traditional_female_1.jpg",
+                "image_url": "https://i.pinimg.com/736x/65/29/82/65298286b826b76d6a32a4fc3febee97.jpg",
                 "image_attributes": {
                     "gender": "Female",
                     "attire": "traditional",
@@ -226,7 +226,7 @@
                 "id": "cute_f_1",
                 "recommendation": true,
                 "name": "Bubbly Charm",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/cute_female_1.jpg",
+                "image_url": "https://i.pinimg.com/1200x/46/73/e0/4673e0cf8aa1e9d4aeb294ac13384141.jpg",
                 "image_attributes": {
                     "gender": "Female",
                     "face_shape": "Round",
