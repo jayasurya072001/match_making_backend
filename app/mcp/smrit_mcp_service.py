@@ -7,6 +7,7 @@ import aiohttp
 from typing import Optional, Tuple, Literal
 import json
 import os
+from app.services.redis_service import redis_service
 
 
 LOGGING_FORMAT = "[%(asctime)s] %(levelname)s %(name)s:%(lineno)d - %(message)s"
@@ -453,14 +454,93 @@ async def get_profile_recommendations(
         # For this tool, better to return empty or a suggestion message.
         return {
             "message": "No specific style recommendations found. Try keywords like 'traditional', 'modern', 'cute'.",
-            "recommendations": []
+            "docs": []
         }
         
     return {
         "message": f"Here are some visual styles based on '{query}':",
-        "recommendations": recommendations,
+        "docs": recommendations,
         "instruction": "Select a profile to continue search with these visual attributes."
     }
+
+@mcp.tool()
+async def cross_regional_visual_search(
+    user_id: str,
+    target_identity_filter: str,
+    visual_reference_query: str,
+    limit: int = 5
+) -> Any:
+    """
+    Find profiles that match a specific 'Identity' (Target) but look like a different 'Visual Style' (Reference).
+    
+    Use this tool for requests like:
+    - "Tamil girl looking like a Bengali"
+    - "Kannada boy who looks Punjabi"
+    - "Doctor who looks like a model"
+    
+    Arguments:
+    - target_identity_filter: JSON string of filters for WHO you want to find (e.g. '{"mother_tongue": "Tamil", "gender": "Female"}').
+    - visual_reference_query: JSON string of filters for WHAT they should look like (e.g. '{"mother_tongue": "Bengali", "gender": "Female"}').
+    - limit: Number of results to return.
+    
+    Returns:
+    - A list of profiles matching the Target Identity but ordered by visual similarity to the Reference Style.
+    """
+    logger.info(f"Executing Cross-Regional Search: Target={target_identity_filter}, Reference={visual_reference_query}")
+    
+    try:
+        # Parse JSON inputs
+        target_filters = json.loads(target_identity_filter)
+        reference_filters = json.loads(visual_reference_query)
+        
+        # Step 1: Find the "Visual Reference" Profile
+        # We search for *one* best match that represents the "Look"
+        reference_results = await redis_service.search(
+            user_id=user_id,
+            filters=reference_filters,
+            k=1
+        )
+        
+        if not reference_results or not reference_results.docs:
+            return {
+                "message": f"Could not find any reference profile for style: {visual_reference_query}. Try a different visual description.",
+                "docs": []
+            }
+            
+        reference_profile_id = reference_results.docs[0].id
+        logger.info(f"Found Reference Profile ID: {reference_profile_id}")
+        
+        # Step 2: Extract the Embedding (The "Look")
+        # RedisJSON stores the embedding at $.embeddings
+        reference_doc = await redis_service.get_doc(user_id, reference_profile_id)
+        
+        if not reference_doc or 'embeddings' not in reference_doc:
+             return {
+                "message": "Found reference profile but it has no face embedding. Cannot perform visual search.",
+                "docs": []
+            }
+            
+        reference_embedding = reference_doc['embeddings']
+        
+        # Step 3: Search Target with Reference Embedding
+        # Query: Find TARGET identity profiles that are visually close to REFERENCE embedding
+        cross_results = await redis_service.search(
+            user_id=user_id,
+            query_vector=reference_embedding,
+            filters=target_filters, # This enforces the Target Identity (e.g. Tamil)
+            k=limit
+        )
+        
+        return {
+            "message": "Here are profiles matching your criteria with the requested visual style:",
+            "docs": cross_results.docs if cross_results else []
+        }
+
+    except json.JSONDecodeError:
+        return {"error": "Invalid JSON format in arguments. Please provide valid JSON strings."}
+    except Exception as e:
+        logger.error(f"Error in cross_regional_visual_search: {str(e)}")
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     mcp.run()
