@@ -145,6 +145,7 @@ class OrchestratorService:
         tool_result_str = ""
         tool_args = None
         structured_result = None
+        selected_tool = ""
         try:
             logger.info(f"Orchestration started for {request_id} and user {user_id} and session {session_id}")
             await self._send_status(request_id, "RECEIVED")
@@ -223,7 +224,7 @@ class OrchestratorService:
 
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
-                tool_result_str, tool_args, structured_result, session_id, tool_required, decision, user_profile, personality_id, session_type
+                tool_result_str, tool_args, structured_result, session_id, tool_required, decision, user_profile, personality_id, session_type, selected_tool
             )
                 
 
@@ -525,6 +526,7 @@ class OrchestratorService:
 
                 structured_result = self._parse_mcp_output(res_mcp)
 
+        
                 structured_result = await self._handle_auto_reset_and_pagination(
                     structured_result,
                     selected_tool,
@@ -534,6 +536,7 @@ class OrchestratorService:
                 )
 
                 tool_result_str = json.dumps(structured_result, default=str)
+                logger.info(f"Tool execution completed for {selected_tool}. Result: {tool_result_str}")
 
                 await self.append_history(
                     user_id,
@@ -551,7 +554,7 @@ class OrchestratorService:
 
         
 
-    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None):
+    async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, selected_tool: Optional[str] = None):
         """Step 3: Generate final answer."""
         # Prepare Context
 
@@ -616,12 +619,12 @@ class OrchestratorService:
         
         logger.info(f"Step 3 result: Summarize {resp}")
         if resp and resp.get("final_answer"):
-            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required, None, session_type, voice_id)
+            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required, None, session_type, voice_id, selected_tool)
         else:
             await self._send_status(request_id, "NO_SUMMARY")
             await self._handle_error_response(request_id, user_id, session_id, query, "No Summary Generated")
 
-    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None, session_type: Optional[str] = None, voice_id: Optional[str] = None) :
+    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None, session_type: Optional[str] = None, voice_id: Optional[str] = None, selected_tool: Optional[str] = None):
         # Save to history
         await self.append_history(user_id, {"role": "assistant", "content": answer}, session_id)
         # Publish final event (mimic what SSE expects for closure)
@@ -651,6 +654,8 @@ class OrchestratorService:
             "user_id": user_id,
             "user_query": query,
             "tool_required": tool_required,
+            "selected_tool": selected_tool,
+            "tool_args": tool_args,
             "status": "completed",
             "complete": True,
             "final_answer": answer,
