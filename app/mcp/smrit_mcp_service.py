@@ -458,6 +458,7 @@ async def get_profile_recommendations(
         
     return {
         "message": f"Here are some visual styles based on '{query}':",
+        "recommendation": True,
         "docs": recommendations,
         "instruction": "Select a profile to continue search with these visual attributes."
     }
