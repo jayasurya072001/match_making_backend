@@ -7,7 +7,6 @@ import aiohttp
 from typing import Optional, Tuple, Literal, Union, List
 import json
 import os
-from app.services.redis_service import redis_service
 
 
 LOGGING_FORMAT = "[%(asctime)s] %(levelname)s %(name)s:%(lineno)d - %(message)s"
@@ -470,88 +469,115 @@ async def get_profile_recommendations(
         
     return {
         "message": f"Here are some visual styles based on '{query}':",
+        "recommendation": True,
         "docs": recommendations,
         "instruction": "Select a profile to continue search with these visual attributes."
     }
 
 @mcp.tool()
-async def cross_regional_visual_search(
+async def cross_location_visual_search(
     user_id: str,
-    target_identity_filter: str,
-    visual_reference_query: str,
+    gender: Literal["male", "female"],
+    source_location: str,
+    target_location: str,   
     limit: int = 5
 ) -> Any:
     """
-    Find profiles that match a specific 'Identity' (Target) but look like a different 'Visual Style' (Reference).
+    This tool finds profiles from one location that visually resemble profiles from another location.
     
-    Use this tool for requests like:
-    - "Tamil girl looking like a Bengali"
-    - "Kannada boy who looks Punjabi"
-    - "Doctor who looks like a model"
+    It is designed to answer queries like:
+    1. "I need a kannada boy who looks like west indian"
+       -> gender="male", source_location="West India", target_location="Karnataka"
     
-    Arguments:
-    - target_identity_filter: JSON string of filters for WHO you want to find (e.g. '{"mother_tongue": "Tamil", "gender": "Female"}').
-    - visual_reference_query: JSON string of filters for WHAT they should look like (e.g. '{"mother_tongue": "Bengali", "gender": "Female"}').
-    - limit: Number of results to return.
-    
-    Returns:
-    - A list of profiles matching the Target Identity but ordered by visual similarity to the Reference Style.
+    2. "Girl in Chennai who looks like girl from Delhi"
+       -> gender="female", source_location="Delhi", target_location="Chennai"
+
+    Args:
+        user_id: The user's ID.
+        gender: The gender of the person to find (male/female).
+        source_location: Where to find the reference profile (e.g. "Delhi").
+        target_location: Where to find the final matches (e.g. "Chennai").
+        limit: Number of results.
     """
-    logger.info(f"Executing Cross-Regional Search: Target={target_identity_filter}, Reference={visual_reference_query}")
-    
+    logger.info(
+        f"[CrossLocationVisualSearch] gender={gender}, "
+        f"source={source_location}, target={target_location}"
+    )
+
+    async def geo(location: str):
+        coords = await geocode_location(location)
+        if not coords:
+            return None
+        lat, lng = coords
+        return {"latitude": lat, "longitude": lng}
+
+    async def search(payload: dict):
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                f"{API_BASE_URL}/{user_id}/search",
+                json=payload,
+                timeout=30
+            )
+            res.raise_for_status()
+            return res.json()
+
     try:
-        # Parse JSON inputs
-        target_filters = json.loads(target_identity_filter)
-        reference_filters = json.loads(visual_reference_query)
-        
-        # Step 1: Find the "Visual Reference" Profile
-        # We search for *one* best match that represents the "Look"
-        reference_results = await redis_service.search(
-            user_id=user_id,
-            filters=reference_filters,
-            k=1
-        )
-        
-        if not reference_results or not reference_results.docs:
-            return {
-                "message": f"Could not find any reference profile for style: {visual_reference_query}. Try a different visual description.",
-                "docs": []
-            }
-            
-        reference_profile_id = reference_results.docs[0].id
-        logger.info(f"Found Reference Profile ID: {reference_profile_id}")
-        
-        # Step 2: Extract the Embedding (The "Look")
-        # RedisJSON stores the embedding at $.embeddings
-        reference_doc = await redis_service.get_doc(user_id, reference_profile_id)
-        
-        if not reference_doc or 'embeddings' not in reference_doc:
-             return {
-                "message": "Found reference profile but it has no face embedding. Cannot perform visual search.",
-                "docs": []
-            }
-            
-        reference_embedding = reference_doc['embeddings']
-        
-        # Step 3: Search Target with Reference Embedding
-        # Query: Find TARGET identity profiles that are visually close to REFERENCE embedding
-        cross_results = await redis_service.search(
-            user_id=user_id,
-            query_vector=reference_embedding,
-            filters=target_filters, # This enforces the Target Identity (e.g. Tamil)
-            k=limit
-        )
-        
-        return {
-            "message": "Here are profiles matching your criteria with the requested visual style:",
-            "docs": cross_results.docs if cross_results else []
+        # STEP 1 — get ONE reference image from source location
+        # Use gender filter for reference
+        source_geo = await geo(source_location)
+
+        source_payload = {
+            "filters": {"gender": gender},
+            "geo_filter": source_geo,
+            "k": 1   # ✅ only one image
         }
 
-    except json.JSONDecodeError:
-        return {"error": "Invalid JSON format in arguments. Please provide valid JSON strings."}
+        source_payload = {k: v for k, v in source_payload.items() if v}
+        source_result = await search(source_payload)
+
+        source_docs = source_result.get("docs", [])
+        if not source_docs:
+            return {
+                "message": f"No reference profile found in {source_location}.",
+                "docs": []
+            }
+
+        reference_image = source_docs[0].get("image_url")
+        if not reference_image:
+            return {
+                "message": "Reference profile found but image_url is missing.",
+                "docs": []
+            }
+
+        logger.info(f"[CrossLocationVisualSearch] Reference image: {reference_image}")
+
+        # STEP 2 — search target location using reference image
+        # Use gender filter for target
+        target_geo = await geo(target_location)
+
+        target_payload = {
+            "image_url": reference_image,  # ✅ only one image_url
+            "filters": {"gender": gender},
+            "geo_filter": target_geo,
+            "k": limit
+        }
+
+        target_payload = {k: v for k, v in target_payload.items() if v}
+        target_result = await search(target_payload)
+
+        target_docs = target_result.get("docs", [])
+
+        return {
+            "message": f"Profiles in {target_location} visually similar to {source_location}.",
+            "reference_image": reference_image,
+            "count": len(target_docs),
+            "docs": target_docs
+        }
+
     except Exception as e:
-        logger.error(f"Error in cross_regional_visual_search: {str(e)}")
+        logger.exception("Cross-location visual search failed")
         return {"error": str(e)}
+
 
 if __name__ == "__main__":
     mcp.run()

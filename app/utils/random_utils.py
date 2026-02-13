@@ -85,14 +85,45 @@ tools_specific_promtps = {
         3. Do not include unrelated words in `query`.
         4. Output {{"query": "...", "gender": "..."}} (gender is optional).
     """,
-    "cross_regional_visual_search": """
-        EXTRACTION RULES
-        1. SPLIT the request into TWO parts: "TARGET Identity" (Who to find) and "REFERENCE Visuals" (What they look like).
-        2. `target_identity_filter`: Must be a valid JSON string of filters for the TARGET.
-            - Example: "Tamil girl" -> '{{"mother_tongue": "Tamil", "gender": "Female"}}'
-        3. `visual_reference_query`: Must be a valid JSON string of filters for the REFERENCE look.
-            - Example: "Short hair like a Bengali" -> '{{"mother_tongue": "Bengali", "hair_style": "Short"}}'
-        4. OUTPUT must be valid JSON with these two keys containing STRINGIFIED JSON values.
+    "cross_location_visual_search": """
+        EXTRACTION RULES:
+        1. SPLIT request into:
+            - **TARGET** (Who/Where we want) 
+            - **REFERENCE** (What they look like/Where that look comes from).
+        
+        2. `gender`: Detect from context.
+            - "girl", "woman", "lady" -> "female"
+            - "boy", "man", "guy" -> "male"
+
+        3. `source_location`: The location defining the visual style (Reference).
+            - "looking like bengali" -> "Kolkata" (Reference City)
+            - "looks like north indian" -> "Delhi" or "Chandigarh"
+            - "punjabi look" -> "Chandigarh"
+            - "looks like kashmiri" -> "Srinagar"
+            - If simple "bengali" is mentioned as the visual style, infer "Kolkata".
+
+        4. `target_location`: The location where we want to find the person (Target).
+            - "girl from tamilnadu" -> "Chennai"
+            - "boy from kerala" -> "Kochi" or "Thiruvananthapuram"
+            - "person in mumbai" -> "Mumbai"
+
+        5. OUTPUT JSON:
+            {
+                "gender": "male" | "female",
+                "source_location": "City Name/State Capital",
+                "target_location": "City Name/State Capital"
+            }
+
+        EXAMPLE: "I want a girl from tamilnadu who is looking like bengali"
+        - "girl" -> gender="female"
+        - "girl from tamilnadu" -> target_location="Chennai"
+        - "looking like bengali" -> source_location="Kolkata"
+        OUTPUT:
+            {
+                "gender": "female",
+                "source_location": "Kolkata",
+                "target_location": "Chennai"
+            }
     """,
     "search_profiles": """
         EXTRACTION RULES
