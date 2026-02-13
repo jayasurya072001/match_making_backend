@@ -73,34 +73,48 @@ tools_specific_promtps = {
     """,
     "cross_location_visual_search": """
         EXTRACTION RULES:
-        1. SPLIT the request into TWO parts: 
-            - "TARGET Identity" (Who to find) 
-            - "REFERENCE Visuals" (What they look like).
+        1. SPLIT request into:
+            - **TARGET** (Who/Where we want) 
+            - **REFERENCE** (What they look like/Where that look comes from).
 
-        2. `source_filters`: characteristics of the REFERENCE PERSON (the "look-alike").
-            - Example: "fit body", "bengali", "tall" -> {{"body_shape": "fit", "ethnicity": "bengali"}}
+        2. `source_location`: The location defining the visual style (Reference).
+            - "looking like bengali" -> "Kolkata" (Reference City)
+            - "looks like north indian" -> "Delhi" or "Chandigarh"
+            - "punjabi look" -> "Chandigarh"
+            - "looks like kashmiri" -> "Srinagar"
+            - If simple "bengali" is mentioned as the visual style, infer "Kolkata".
 
-        3. `target_filters`: characteristics of the CANDIDATE to find.
-            - Example: "kannada boy", "male" -> {{"mother_tongue": "kannada", "gender": "male"}}
+        3. `target_location`: The location where we want to find the person (Target).
+            - "girl from tamilnadu" -> "Chennai"
+            - "boy from kerala" -> "Kochi" or "Thiruvananthapuram"
+            - "person in mumbai" -> "Mumbai"
 
-        4. `source_location`: The location defining the REFERENCE VISUALS.
-            - CRITICAL: If user gives a STATE or REGION, convert to the CAPITAL or MAJOR CITY.
-            - "Punjabi" -> "Chandigarh" or "Amritsar"
-            - "North India" -> "Delhi"
-            - "Tamil" -> "Chennai"
-            - "West India" -> "Mumbai"
+        4. `source_filters`: characteristics of the REFERENCE (look-alike).
+            - "girl" -> {{"gender": "female"}}
+            - "fit body" -> {{"body_shape": "fit"}}
+            - "bengali" -> {{"ethnicity": "bengali"}}
+        
+        5. `target_filters`: characteristics of the CANDIDATE.
+            - "girl" -> {{"gender": "female"}}
+            - "tamil" -> {{"mother_tongue": "tamil"}}
 
-        5. `target_location`: The location to SEARCH FOR CANDIDATES.
-            - CRITICAL: If user gives a STATE or REGION, convert to the CAPITAL or MAJOR CITY.
-            - "Karnataka" -> "Bangalore"
-            - "Tamil Nadu" -> "Chennai"
-
-        6. OUTPUT must be valid JSON:
+        6. OUTPUT JSON:
             {
                 "source_filters": { ... },
                 "target_filters": { ... },
-                "source_location": "City Name",
-                "target_location": "City Name"
+                "source_location": "City Name/State Capital",
+                "target_location": "City Name/State Capital"
+            }
+
+        EXAMPLE: "I want a girl from tamilnadu who is looking like bengali"
+        - "girl from tamilnadu" -> target_location="Chennai", target_filters={{"gender": "female", "mother_tongue": "tamil"}}
+        - "looking like bengali" -> source_location="Kolkata", source_filters={{"gender": "female", "ethnicity": "bengali"}}
+        OUTPUT:
+            {
+                "source_filters": {{"gender": "female", "ethnicity": "bengali"}},
+                "target_filters": {{"gender": "female", "mother_tongue": "tamil"}},
+                "source_location": "Kolkata",
+                "target_location": "Chennai"
             }
     """,
     "search_profiles": """
