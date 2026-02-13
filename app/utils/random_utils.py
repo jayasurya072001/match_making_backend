@@ -71,14 +71,25 @@ tools_specific_promtps = {
         3. Do not include unrelated words in `query`.
         4. Output {{"query": "...", "gender": "..."}} (gender is optional).
     """,
-    "cross_regional_visual_search": """
-        EXTRACTION RULES
-        1. SPLIT the request into TWO parts: "TARGET Identity" (Who to find) and "REFERENCE Visuals" (What they look like).
-        2. `target_identity_filter`: Must be a valid JSON string of filters for the TARGET.
+    "cross_location_visual_search": """
+        EXTRACTION RULES:
+        1. SPLIT the request into TWO parts: 
+            - "TARGET Identity" (Who to find) 
+            - "REFERENCE Visuals" (What they look like).
+
+        2. `filters`: Must contain common identity filters (such as gender, age, etc.) that are applied to both the target and reference profiles.
             - Example: "Tamil girl" -> '{{"mother_tongue": "Tamil", "gender": "Female"}}'
-        3. `visual_reference_query`: Must be a valid JSON string of filters for the REFERENCE look.
-            - Example: "Short hair like a Bengali" -> '{{"mother_tongue": "Bengali", "hair_style": "Short"}}'
-        4. OUTPUT must be valid JSON with these two keys containing STRINGIFIED JSON values.
+
+        3. `source_location`: Specify the location that defines the "REFERENCE Visuals" (what they look like). This will guide the search for the visual style.
+            - Example: "Punjabi" -> Punjab (visual reference)
+
+        4. `target_location`: Specify the location where the target identity search should happen.
+            - Example: "Chennai" -> Chennai (target location)
+
+        5. OUTPUT must be a valid JSON with the following keys:
+            - `filters`: The JSON string containing the target and reference identity filters.
+            - `source_location`: The location where the reference visuals are searched.
+            - `target_location`: The location where the target identity profiles are searched.
     """,
     "search_profiles": """
         EXTRACTION RULES
