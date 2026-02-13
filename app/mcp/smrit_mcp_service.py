@@ -4,7 +4,7 @@ import logging
 import asyncio
 from typing import Any
 import aiohttp
-from typing import Optional, Tuple, Literal
+from typing import Optional, Tuple, Literal, Union, List
 import json
 import os
 
@@ -105,11 +105,22 @@ async def search_profiles(
     scars: Optional[str] = None,
     earrings: Optional[str] = None,
 
-    attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None, 
+    # attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None,
+    attire: Optional[
+        Union[
+            Literal["casual", "western", "traditional", "formal"],
+            List[Literal["casual", "western", "traditional", "formal"]]
+        ]
+    ] = None,
     body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None, 
     lip_stick: Optional[Literal["no", "yes", "none"]] = None, 
     skin_color: Optional[Literal["white", "black", "none", "brown"]] = None,
-    eye_size: Optional[Literal["normal", "large", "small", "None"]] = None, 
+    eye_size: Optional[
+        Union[
+            Literal["normal", "large", "small", "None"],
+            List[Literal["normal", "large", "small", "None"]]
+        ]
+    ] = None,
     face_size: Optional[Literal["large", "medium", "small"]] = None, 
     face_structure: Optional[Literal["symmetric", "asymmetric"]] = None, 
     hair_length: Optional[Literal["long", "medium", "short"]] = None,
@@ -462,6 +473,111 @@ async def get_profile_recommendations(
         "docs": recommendations,
         "instruction": "Select a profile to continue search with these visual attributes."
     }
+
+@mcp.tool()
+async def cross_location_visual_search(
+    user_id: str,
+    gender: Literal["male", "female"],
+    source_location: str,
+    target_location: str,   
+    limit: int = 5
+) -> Any:
+    """
+    This tool finds profiles from one location that visually resemble profiles from another location.
+    
+    It is designed to answer queries like:
+    1. "I need a kannada boy who looks like west indian"
+       -> gender="male", source_location="West India", target_location="Karnataka"
+    
+    2. "Girl in Chennai who looks like girl from Delhi"
+       -> gender="female", source_location="Delhi", target_location="Chennai"
+
+    Args:
+        user_id: The user's ID.
+        gender: The gender of the person to find (male/female).
+        source_location: Where to find the reference profile (e.g. "Delhi").
+        target_location: Where to find the final matches (e.g. "Chennai").
+        limit: Number of results.
+    """
+    logger.info(
+        f"[CrossLocationVisualSearch] gender={gender}, "
+        f"source={source_location}, target={target_location}"
+    )
+
+    async def geo(location: str):
+        coords = await geocode_location(location)
+        if not coords:
+            return None
+        lat, lng = coords
+        return {"latitude": lat, "longitude": lng}
+
+    async def search(payload: dict):
+        async with httpx.AsyncClient() as client:
+            res = await client.post(
+                f"{API_BASE_URL}/{user_id}/search",
+                json=payload,
+                timeout=30
+            )
+            res.raise_for_status()
+            return res.json()
+
+    try:
+        # STEP 1 — get ONE reference image from source location
+        # Use gender filter for reference
+        source_geo = await geo(source_location)
+
+        source_payload = {
+            "filters": {"gender": gender},
+            "geo_filter": source_geo,
+            "k": 1   # ✅ only one image
+        }
+
+        source_payload = {k: v for k, v in source_payload.items() if v}
+        source_result = await search(source_payload)
+
+        source_docs = source_result.get("docs", [])
+        if not source_docs:
+            return {
+                "message": f"No reference profile found in {source_location}.",
+                "docs": []
+            }
+
+        reference_image = source_docs[0].get("image_url")
+        if not reference_image:
+            return {
+                "message": "Reference profile found but image_url is missing.",
+                "docs": []
+            }
+
+        logger.info(f"[CrossLocationVisualSearch] Reference image: {reference_image}")
+
+        # STEP 2 — search target location using reference image
+        # Use gender filter for target
+        target_geo = await geo(target_location)
+
+        target_payload = {
+            "image_url": reference_image,  # ✅ only one image_url
+            "filters": {"gender": gender},
+            "geo_filter": target_geo,
+            "k": limit
+        }
+
+        target_payload = {k: v for k, v in target_payload.items() if v}
+        target_result = await search(target_payload)
+
+        target_docs = target_result.get("docs", [])
+
+        return {
+            "message": f"Profiles in {target_location} visually similar to {source_location}.",
+            "reference_image": reference_image,
+            "count": len(target_docs),
+            "docs": target_docs
+        }
+
+    except Exception as e:
+        logger.exception("Cross-location visual search failed")
+        return {"error": str(e)}
+
 
 if __name__ == "__main__":
     mcp.run()

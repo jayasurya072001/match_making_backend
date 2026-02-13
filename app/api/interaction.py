@@ -23,7 +23,7 @@ async def chat_request(
     """
     Initiate a chat request via Orchestrator.
     """
-    request_id = await orchestrator_service.handle_request(user_id, body.message, body.session_id, body.person_id, body.personality_id, body.session_type)
+    request_id = await orchestrator_service.handle_request(user_id, body.message, body.session_id, body.person_id, body.personality_id, body.session_type, body.recommendation_ids)
     
     response = {"status": "accepted", "request_id": request_id}
     

@@ -13,7 +13,7 @@ from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary, SessionType
-from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt
+from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt, get_about_agent_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
 from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
@@ -123,7 +123,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None) -> str:
         """
         Public API: Spawns the orchestration task.
         """
@@ -137,11 +137,11 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type, recommendation_ids))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
@@ -181,8 +181,20 @@ class OrchestratorService:
                     logger.error(f"Failed to fetch person profile {person_id}: {e}")
 
             
+            
+            # Inject recommendations if present
+            if recommendation_ids:
+                rec_details = self._get_recommendation_details(recommendation_ids)
+                if rec_details:
+                    logger.info(f"Injecting recommendations into query: {recommendation_ids} and detail {rec_details}")
+                    query = rec_details
+
             # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
-            tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
+            if recommendation_ids:
+                logger.info("Forcing tool decision due to recommendation_ids")
+                tool_required = {"decision": "tool"}
+            else:
+                tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
 
             decision = tool_required.get("decision") if tool_required else None
             logger.info(f"Step 1 result: Desicion {decision}")
@@ -216,7 +228,7 @@ class OrchestratorService:
                 else:
                     logger.warning("No tool selected in Step 2, skipping execution")
             
-            elif decision in ("no_tool", "ask_clarification", "inappropriate_block", "gibberish"):
+            elif decision in ("no_tool", "ask_clarification", "inappropriate_block", "gibberish", "about_agent"):
                 logger.info(f"Decision={decision}, skipping tool execution")
 
             else:
@@ -235,6 +247,64 @@ class OrchestratorService:
     # --------------------------
     # Orchestration Steps
     # --------------------------
+    def _get_recommendation_details(self, recommendation_ids: List[str]) -> str:
+        try:
+            file_path = os.path.abspath("app/mcp/recommendations.json")
+            if not os.path.exists(file_path):
+                logger.error(f"Recommendations file not found at {file_path}")
+                return ""
+
+            with open(file_path, "r") as f:
+                data = json.load(f)
+
+            combined_attributes = {}
+
+            # Traverse JSON
+            for category, genders in data.items():
+                for gender, profiles in genders.items():
+                    for profile in profiles:
+                        if profile.get("id") in recommendation_ids:
+                            logger.info(f"profile {profile}")
+
+                            image_attributes = profile.get("image_attributes", {})
+
+                            for key, value in image_attributes.items():
+                                if not value:
+                                    continue
+
+                                # Normalize key formatting
+                                key_clean = key.replace("_", " ")
+
+                                if key_clean not in combined_attributes:
+                                    combined_attributes[key_clean] = set()
+
+                                combined_attributes[key_clean].add(value)
+
+            if not combined_attributes:
+                return ""
+
+            # Build natural language query
+            parts = []
+            for key, values in combined_attributes.items():
+                values_list = list(values)
+
+                if len(values_list) == 1:
+                    parts.append(f"{values_list[0]} {key}")
+                else:
+                    joined_values = " or ".join(values_list)
+                    parts.append(f"{key} {joined_values}")
+
+            final_query = "I need " + " and ".join(parts) + "."
+
+            logger.info(f"Recommendation match details: {final_query}")
+            return final_query
+
+        except Exception:
+            logger.exception("Error getting recommendation details")
+            return ""
+
+
+
     async def _prepare_context(self, user_id: str, session_id: Optional[str] = None):
         """Fetches history and session summary to build context string."""
         history = await self.get_history(user_id, session_id) 
@@ -589,6 +659,8 @@ class OrchestratorService:
             default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
         elif decision == 'gibberish':
             default_prompt = get_gibberish_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
+        elif decision == 'about_agent':
+            default_prompt = get_about_agent_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
         else:
             default_prompt = get_no_tool_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
 

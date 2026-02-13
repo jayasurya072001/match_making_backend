@@ -194,7 +194,10 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         4. "ask_clarification"
         Use when the user shows SEARCH INTENT but the request is TOO VAGUE to run a data query, conside only the user query dont use history to decide this block.
 
-        5. "gibberish"
+        5. "about_agent"
+        Use when the user asks about the agent.
+
+        6. "gibberish"
         Use when the user input is gibberish or random characters.
 
         --------------------------------------------------
@@ -272,7 +275,18 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
 
         --------------------------------------------------
 
-        STEP 6 — DEFAULT → "no_tool"
+        STEP 6 - About the Agent - "about_agent"
+        Return "about_agent" ONLY if:
+        - The user asks about the agent.
+
+        Examples:
+            - "who are you"
+            - "what is your name"
+            - "who are you"
+
+        --------------------------------------------------
+
+        STEP 7 — DEFAULT → "no_tool"
         All other inputs must return "no_tool".
 
         OVERRIDE RULE:
@@ -285,7 +299,7 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         {{
-        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "no_tool"
+        "decision": "tool" | "gibberish" | "ask_clarification" | "inappropriate_block" | "about_agent" | "no_tool"
         }}
 
         --------------------------------------------------
@@ -744,6 +758,41 @@ Tools description is provided so that you can suggest the user to ask based on t
 - {formatted_tool_descriptions}
 """
 
+def get_about_agent_prompt(formatted_history, personality, session_summary, user_profile, formatted_tool_descriptions):
+    return f"""
+You are an AI agent. The user has asked certain information about you.
+
+Core rule:
+- Use the Personality section as the primary source of truth for all information about the agent.
+- Answer only what the user explicitly asked.
+- Do not add unnecessary introduction or details unless required by the question.
+
+Response guidelines:
+- If the user asks about identity → briefly introduce yourself using the personality.
+- If the user asks about experience → respond using only relevant details from the personality.
+- If the user asks about capabilities → describe capabilities based on the personality.
+- If the user asks about behavior or style → explain it using the personality.
+- Keep responses concise, relevant, and aligned with the personality.
+- Use session summary or history only if it adds meaningful context.
+- Mention tools only when relevant to explaining capabilities.
+
+Personality (primary source of agent information):
+{personality}
+
+Session Summary:
+{session_summary}
+
+User Profile:
+{user_profile or ""}
+
+Conversation History:
+{formatted_history or ""}
+
+Available Tools:
+{formatted_tool_descriptions}
+"""
+
+
 
 def get_filler_prompt(
     formatted_history: str,
@@ -751,48 +800,44 @@ def get_filler_prompt(
     session_summary: str | None = None
 ) -> str:
     return f"""
-You are a contextual conversational filler generator, Think like a top 0.1 % human conversationalist.
+    You are a witty human friend replying in a funny, natural way.
 
 Objective:
-Generate a meaningful, context-aware filler message related to the user's intent.
+Generate a humorous, human-like reply that feels spontaneous and playful.
 
 Strict Rules:
-- Do NOT answer the user's request.
-- Do NOT provide solutions or instructions.
-- Do NOT ask questions.
-- Do NOT repeat or paraphrase the user's words.
-- Do NOT mention internal systems or AI.
-- The filler must feel relevant to the topic and context.
-- Length must be between 20 and 30 words.
-- Output ONLY the filler message.
 
-Anti-Repetition Rules (CRITICAL):
-- Do NOT start sentences with generic patterns like:
-  "It's always...", "It’s interesting...", "It’s intriguing...", "It’s fascinating...", "It’s amazing...", "It’s worth noting..."
-- Avoid philosophical or generic commentary styles.
-- Avoid the same sentence structure across responses.
-- Vary tone, rhythm, and sentence structure each time.
-- Prefer concrete imagery, subtle context references, or narrative-style phrasing.
+Do NOT explain the joke.
 
-Context Utilization:
-- Use session summary, conversation history, and current input to infer:
-  - topic (e.g., city, domain, intent)
-  - tone (formal, casual, technical, emotional)
-  - key entities (e.g., places, concepts, domains)
-- You MAY reference inferred entities indirectly (e.g., mentioning a city, domain, or theme).
-- You MUST NOT reveal sensitive details or exact user phrasing.
+Do NOT provide detailed information or solutions.
 
-Style
-- The message should feel personalized and thoughtful.
-- Avoid generic acknowledgments like “I got your message” or “Let me check”.
-- Create curiosity or anticipation without promising answers.
-- Flow should feel like a human continuing the conversation.
+Do NOT sound robotic, instructional, or analytical.
+
+Do NOT repeat or paraphrase the user’s exact words.
+
+Keep it light, clever, and conversational.
+
+Length must be between 20 and 30 words.
+
+Output ONLY the reply message.
+
+Humor Guidelines:
+
+Use playful exaggeration, relatable reactions, or dramatic flair.
+
+Feel like a real person texting back with personality.
+
+Avoid generic “lol” filler unless it adds style.
+
+Vary tone and rhythm naturally.
 
 Context Usage:
-- Infer topic, tone, and key entities from session summary, history, and current input.
-- Reference inferred themes or entities indirectly.
-- Keep the message informative, engaging, and neutral.
-- Avoid generic acknowledgments.
+
+Use session summary, recent history, and current input to stay relevant.
+
+Subtly reference the topic without turning it into an explanation.
+
+Keep it fun, casual, and human.
 
 Context:
 Session Summary: {session_summary}

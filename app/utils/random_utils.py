@@ -35,10 +35,23 @@ def validate_and_clean_tool_args(args: dict, tool_schema: dict) -> dict:
         if v in ("", None) or (isinstance(v, (list, dict)) and len(v) == 0):
             continue
 
-        # ✅ ENUM validation
-        if "enum" in schema_def and v not in schema_def["enum"]:
-            print(f"⚠️ Invalid value '{v}' for field '{k}', allowed: {schema_def['enum']}")
-            continue  # drop invalid enum value
+        # ✅ ENUM validation (supports list or single value)
+        if "enum" in schema_def:
+            allowed = schema_def["enum"]
+
+            if isinstance(v, list):
+                valid_values = [item for item in v if item in allowed]
+
+                if not valid_values:
+                    print(f"⚠️ Invalid values for field '{k}', allowed: {allowed}")
+                    continue
+
+                v = valid_values  # clean invalid values
+
+            else:
+                if v not in allowed:
+                    print(f"⚠️ Invalid value '{v}' for field '{k}', allowed: {allowed}")
+                    continue
 
         # ✅ TYPE validation (optional but recommended)
         expected_type = schema_def.get("type")
@@ -46,8 +59,9 @@ def validate_and_clean_tool_args(args: dict, tool_schema: dict) -> dict:
             continue
         if expected_type == "number" and not isinstance(v, (int, float)):
             continue
-        if expected_type == "string" and not isinstance(v, str):
-            continue
+        if expected_type == "string":
+            if not isinstance(v, (str, list)):
+                continue
 
         # ✅ Nested object validation
         if isinstance(v, dict) and "properties" in schema_def:
@@ -64,26 +78,67 @@ tools_specific_promtps = {
         EXTRACTION RULES
         1. If user requests for specific name then output {{"name": "name"}}
     """,
-      "get_profile_recommendations": """
+    "get_profile_recommendations": """
         EXTRACTION RULES
         1. Extract the main descriptive or style keywords into `query` (e.g., "traditional", "simple", "corporate", "cute").
         2. Detect `gender` from context (e.g. "girl"/"woman" -> "female", "boy"/"man" -> "male").
         3. Do not include unrelated words in `query`.
         4. Output {{"query": "...", "gender": "..."}} (gender is optional).
     """,
+    "cross_location_visual_search": """
+        EXTRACTION RULES:
+        1. SPLIT request into:
+            - **TARGET** (Who/Where we want) 
+            - **REFERENCE** (What they look like/Where that look comes from).
+        
+        2. `gender`: Detect from context.
+            - "girl", "woman", "lady" -> "female"
+            - "boy", "man", "guy" -> "male"
+
+        3. `source_location`: The location defining the visual style (Reference).
+            - "looking like bengali" -> "Kolkata" (Reference City)
+            - "looks like north indian" -> "Delhi" or "Chandigarh"
+            - "punjabi look" -> "Chandigarh"
+            - "looks like kashmiri" -> "Srinagar"
+            - If simple "bengali" is mentioned as the visual style, infer "Kolkata".
+
+        4. `target_location`: The location where we want to find the person (Target).
+            - "girl from tamilnadu" -> "Chennai"
+            - "boy from kerala" -> "Kochi" or "Thiruvananthapuram"
+            - "person in mumbai" -> "Mumbai"
+
+        5. OUTPUT JSON:
+            {
+                "gender": "male" | "female",
+                "source_location": "City Name/State Capital",
+                "target_location": "City Name/State Capital"
+            }
+
+        EXAMPLE: "I want a girl from tamilnadu who is looking like bengali"
+        - "girl" -> gender="female"
+        - "girl from tamilnadu" -> target_location="Chennai"
+        - "looking like bengali" -> source_location="Kolkata"
+        OUTPUT:
+            {
+                "gender": "female",
+                "source_location": "Kolkata",
+                "target_location": "Chennai"
+            }
+    """,
     "search_profiles": """
         EXTRACTION RULES
         1. Dont Mix the values of one argument to another argument.
-        2. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
-        3. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        4. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
-        5. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
-        6. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
+        2. If user asks multiple values for a same filter then put them in list and return, dont use $in operator -> Correct Output {{'eye_size': ['large', 'small']}}
+        3. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
+        4. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
+        5. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
+        6. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
+        7. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
             - "25 years old" -> {{"min_age": 25, "max_age": 25}}
             - "above 20" -> {{"min_age": 20}}
             - "under 30" -> {{"max_age": 30}}
             - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
-        7. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
+        8. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
             - Keep all existing user filters and preferences unchanged.
             - Respond as if more options are now available.
             - Never mention pagination, limits, page size, or re-querying.

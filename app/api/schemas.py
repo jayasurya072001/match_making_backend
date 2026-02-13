@@ -202,6 +202,11 @@ class ChatRequestBody(BaseModel):
         description="Optional fillers that needs to be filled while waiting for the response"
     )
 
+    recommendation_ids: Optional[List[str]] = Field(
+        [],
+        description="Optional list of recommendation ids to be injected into the chat context"
+    )
+
 class SessionSummary(BaseModel):
     user_id: str
     session_id: Optional[str] = None
