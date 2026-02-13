@@ -77,19 +77,31 @@ tools_specific_promtps = {
             - "TARGET Identity" (Who to find) 
             - "REFERENCE Visuals" (What they look like).
 
-        2. `filters`: Must contain common identity filters (such as gender, age, etc.) that are applied to both the target and reference profiles.
-            - Example: '{{"gender": "Female"}}'
+        2. `source_filters`: characteristics of the REFERENCE PERSON (the "look-alike").
+            - Example: "fit body", "bengali", "tall" -> {{"body_shape": "fit", "ethnicity": "bengali"}}
 
-        3. `source_location`: Specify the location that defines the "REFERENCE Visuals" (what they look like). This will guide the search for the visual style.
-            - Example: "Punjabi" -> Punjab (visual reference)
+        3. `target_filters`: characteristics of the CANDIDATE to find.
+            - Example: "kannada boy", "male" -> {{"mother_tongue": "kannada", "gender": "male"}}
 
-        4. `target_location`: Specify the location where the target identity search should happen.
-            - Example: "Chennai" -> Chennai (target location)
+        4. `source_location`: The location defining the REFERENCE VISUALS.
+            - CRITICAL: If user gives a STATE or REGION, convert to the CAPITAL or MAJOR CITY.
+            - "Punjabi" -> "Chandigarh" or "Amritsar"
+            - "North India" -> "Delhi"
+            - "Tamil" -> "Chennai"
+            - "West India" -> "Mumbai"
 
-        5. OUTPUT must be a valid JSON with the following keys:
-            - `filters`: The JSON string containing the target and reference identity filters.
-            - `source_location`: The location where the reference visuals are searched.
-            - `target_location`: The location where the target identity profiles are searched.
+        5. `target_location`: The location to SEARCH FOR CANDIDATES.
+            - CRITICAL: If user gives a STATE or REGION, convert to the CAPITAL or MAJOR CITY.
+            - "Karnataka" -> "Bangalore"
+            - "Tamil Nadu" -> "Chennai"
+
+        6. OUTPUT must be valid JSON:
+            {
+                "source_filters": { ... },
+                "target_filters": { ... },
+                "source_location": "City Name",
+                "target_location": "City Name"
+            }
     """,
     "search_profiles": """
         EXTRACTION RULES
