@@ -35,10 +35,23 @@ def validate_and_clean_tool_args(args: dict, tool_schema: dict) -> dict:
         if v in ("", None) or (isinstance(v, (list, dict)) and len(v) == 0):
             continue
 
-        # ✅ ENUM validation
-        if "enum" in schema_def and v not in schema_def["enum"]:
-            print(f"⚠️ Invalid value '{v}' for field '{k}', allowed: {schema_def['enum']}")
-            continue  # drop invalid enum value
+        # ✅ ENUM validation (supports list or single value)
+        if "enum" in schema_def:
+            allowed = schema_def["enum"]
+
+            if isinstance(v, list):
+                valid_values = [item for item in v if item in allowed]
+
+                if not valid_values:
+                    print(f"⚠️ Invalid values for field '{k}', allowed: {allowed}")
+                    continue
+
+                v = valid_values  # clean invalid values
+
+            else:
+                if v not in allowed:
+                    print(f"⚠️ Invalid value '{v}' for field '{k}', allowed: {allowed}")
+                    continue
 
         # ✅ TYPE validation (optional but recommended)
         expected_type = schema_def.get("type")
@@ -46,8 +59,9 @@ def validate_and_clean_tool_args(args: dict, tool_schema: dict) -> dict:
             continue
         if expected_type == "number" and not isinstance(v, (int, float)):
             continue
-        if expected_type == "string" and not isinstance(v, str):
-            continue
+        if expected_type == "string":
+            if not isinstance(v, (str, list)):
+                continue
 
         # ✅ Nested object validation
         if isinstance(v, dict) and "properties" in schema_def:
@@ -83,16 +97,17 @@ tools_specific_promtps = {
     "search_profiles": """
         EXTRACTION RULES
         1. Dont Mix the values of one argument to another argument.
-        2. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
-        3. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        4. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
-        5. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
-        6. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
+        2. If user asks multiple values for a same filter then put them in list and return, dont use $in operator -> Correct Output {{'eye_size': ['large', 'small']}}
+        3. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
+        4. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
+        5. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
+        6. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
+        7. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
             - "25 years old" -> {{"min_age": 25, "max_age": 25}}
             - "above 20" -> {{"min_age": 20}}
             - "under 30" -> {{"max_age": 30}}
             - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
-        7. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
+        8. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
             - Keep all existing user filters and preferences unchanged.
             - Respond as if more options are now available.
             - Never mention pagination, limits, page size, or re-querying.

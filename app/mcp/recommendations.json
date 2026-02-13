@@ -232,10 +232,17 @@
                     "face_shape": "Round",
                     "eye_size": "Large",
                     "emotion": "Happy",
-                    "hair": {
-                        "hair_style": "Bangs"
-                    },
                     "attire": "casual"
+                }
+            },
+            {
+                "id": "cute_f_2",
+                "name": "Roby Round",
+                "image_url": "https://i.pinimg.com/736x/ba/33/63/ba3363a19ffc9b1dd0ea3d230a879747.jpg",
+                "image_attributes": {
+                    "gender": "Female",
+                    "eye_size": "small",
+                    "attire": "traditional"
                 }
             }
         ],

@@ -4,7 +4,7 @@ import logging
 import asyncio
 from typing import Any
 import aiohttp
-from typing import Optional, Tuple, Literal
+from typing import Optional, Tuple, Literal, Union, List
 import json
 import os
 from app.services.redis_service import redis_service
@@ -106,11 +106,22 @@ async def search_profiles(
     scars: Optional[str] = None,
     earrings: Optional[str] = None,
 
-    attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None, 
+    # attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None,
+    attire: Optional[
+        Union[
+            Literal["casual", "western", "traditional", "formal"],
+            List[Literal["casual", "western", "traditional", "formal"]]
+        ]
+    ] = None,
     body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None, 
     lip_stick: Optional[Literal["no", "yes", "none"]] = None, 
     skin_color: Optional[Literal["white", "black", "none", "brown"]] = None,
-    eye_size: Optional[Literal["normal", "large", "small", "None"]] = None, 
+    eye_size: Optional[
+        Union[
+            Literal["normal", "large", "small", "None"],
+            List[Literal["normal", "large", "small", "None"]]
+        ]
+    ] = None,
     face_size: Optional[Literal["large", "medium", "small"]] = None, 
     face_structure: Optional[Literal["symmetric", "asymmetric"]] = None, 
     hair_length: Optional[Literal["long", "medium", "short"]] = None,
