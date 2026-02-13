@@ -466,37 +466,30 @@ async def get_profile_recommendations(
 @mcp.tool()
 async def cross_location_visual_search(
     user_id: str,
-    source_filters: dict,
-    target_filters: dict,
+    gender: Literal["male", "female"],
     source_location: str,
     target_location: str,   
     limit: int = 5
 ) -> Any:
     """
-    This tool finds profiles from one location that visually resemble profiles from another location, 
-    allowing DIFFERENT criteria for the "Reference Person" vs the "Target Candidates".
-
-    It is designed to answer queries like:
-    1. "I need a kannada boy who looks like west indian with fit body"
-       -> source_location="West India", source_filters={"body_shape": "fit", "gender": "male"} (To find the reference "fit west indian")
-       -> target_location="Karnataka", target_filters={"gender": "male"} (To find the "kannada boy")
+    This tool finds profiles from one location that visually resemble profiles from another location.
     
-    2. "People in Chennai who look like people from Delhi"
-       -> source_location="Delhi", source_filters={}
-       -> target_location="Chennai", target_filters={}
+    It is designed to answer queries like:
+    1. "I need a kannada boy who looks like west indian"
+       -> gender="male", source_location="West India", target_location="Karnataka"
+    
+    2. "Girl in Chennai who looks like girl from Delhi"
+       -> gender="female", source_location="Delhi", target_location="Chennai"
 
     Args:
         user_id: The user's ID.
-        source_filters: Attributes to find the REFERENCE profile (the "look-alike model"). 
-                        Example: {"body_shape": "fit", "gender": "male"} if the user says "looks like a fit guy".
-        target_filters: Attributes for the ACTUAL candidates to find.
-                        Example: {"gender": "male", "mother_tongue": "kannada"} if the user says "find a kannada boy".
+        gender: The gender of the person to find (male/female).
         source_location: Where to find the reference profile (e.g. "Delhi").
         target_location: Where to find the final matches (e.g. "Chennai").
         limit: Number of results.
     """
     logger.info(
-        f"[CrossLocationVisualSearch] source_filters={source_filters}, target_filters={target_filters}, "
+        f"[CrossLocationVisualSearch] gender={gender}, "
         f"source={source_location}, target={target_location}"
     )
 
@@ -519,11 +512,11 @@ async def cross_location_visual_search(
 
     try:
         # STEP 1 — get ONE reference image from source location
-        # Use SOURCE filters here (e.g. "fit body" for the reference)
+        # Use gender filter for reference
         source_geo = await geo(source_location)
 
         source_payload = {
-            "filters": source_filters,
+            "filters": {"gender": gender},
             "geo_filter": source_geo,
             "k": 1   # ✅ only one image
         }
@@ -548,12 +541,12 @@ async def cross_location_visual_search(
         logger.info(f"[CrossLocationVisualSearch] Reference image: {reference_image}")
 
         # STEP 2 — search target location using reference image
-        # Use TARGET filters here (e.g. "kannada", "male" for the candidate)
+        # Use gender filter for target
         target_geo = await geo(target_location)
 
         target_payload = {
             "image_url": reference_image,  # ✅ only one image_url
-            "filters": target_filters,
+            "filters": {"gender": gender},
             "geo_filter": target_geo,
             "k": limit
         }

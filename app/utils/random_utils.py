@@ -76,43 +76,37 @@ tools_specific_promtps = {
         1. SPLIT request into:
             - **TARGET** (Who/Where we want) 
             - **REFERENCE** (What they look like/Where that look comes from).
+        
+        2. `gender`: Detect from context.
+            - "girl", "woman", "lady" -> "female"
+            - "boy", "man", "guy" -> "male"
 
-        2. `source_location`: The location defining the visual style (Reference).
+        3. `source_location`: The location defining the visual style (Reference).
             - "looking like bengali" -> "Kolkata" (Reference City)
             - "looks like north indian" -> "Delhi" or "Chandigarh"
             - "punjabi look" -> "Chandigarh"
             - "looks like kashmiri" -> "Srinagar"
             - If simple "bengali" is mentioned as the visual style, infer "Kolkata".
 
-        3. `target_location`: The location where we want to find the person (Target).
+        4. `target_location`: The location where we want to find the person (Target).
             - "girl from tamilnadu" -> "Chennai"
             - "boy from kerala" -> "Kochi" or "Thiruvananthapuram"
             - "person in mumbai" -> "Mumbai"
 
-        4. `source_filters`: characteristics of the REFERENCE (look-alike).
-            - "girl" -> {{"gender": "female"}}
-            - "fit body" -> {{"body_shape": "fit"}}
-            - "bengali" -> {{"ethnicity": "bengali"}}
-        
-        5. `target_filters`: characteristics of the CANDIDATE.
-            - "girl" -> {{"gender": "female"}}
-            - "tamil" -> {{"mother_tongue": "tamil"}}
-
-        6. OUTPUT JSON:
+        5. OUTPUT JSON:
             {
-                "source_filters": { ... },
-                "target_filters": { ... },
+                "gender": "male" | "female",
                 "source_location": "City Name/State Capital",
                 "target_location": "City Name/State Capital"
             }
 
         EXAMPLE: "I want a girl from tamilnadu who is looking like bengali"
-        - "girl from tamilnadu" -> target_location="Chennai", target_filters={{"gender": "female", "mother_tongue": "tamil"}}
-        - "looking like bengali" -> source_location="Kolkata", source_filters={{"gender": "female", "ethnicity": "bengali"}}
+        - "girl" -> gender="female"
+        - "girl from tamilnadu" -> target_location="Chennai"
+        - "looking like bengali" -> source_location="Kolkata"
         OUTPUT:
             {
-                "source_filters": {{"gender": "female", "ethnicity": "bengali"}},
-                "target_filters": {{"gender": "female", "mother_tongue": "tamil"}},
+                "gender": "female",
                 "source_location": "Kolkata",
                 "target_location": "Chennai"
             }
