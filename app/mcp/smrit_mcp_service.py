@@ -468,7 +468,7 @@ async def cross_location_visual_search(
     user_id: str,
     filters: dict,
     source_location: str,
-    target_location: str,
+    target_location: str,   
     limit: int = 5
 ) -> Any:
     """

@@ -78,7 +78,7 @@ tools_specific_promtps = {
             - "REFERENCE Visuals" (What they look like).
 
         2. `filters`: Must contain common identity filters (such as gender, age, etc.) that are applied to both the target and reference profiles.
-            - Example: "Tamil girl" -> '{{"mother_tongue": "Tamil", "gender": "Female"}}'
+            - Example: '{{"gender": "Female"}}'
 
         3. `source_location`: Specify the location that defines the "REFERENCE Visuals" (what they look like). This will guide the search for the visual style.
             - Example: "Punjabi" -> Punjab (visual reference)
