@@ -186,8 +186,8 @@ class OrchestratorService:
             if recommendation_ids:
                 rec_details = self._get_recommendation_details(recommendation_ids)
                 if rec_details:
-                    logger.info(f"Injecting recommendations into query: {recommendation_ids}")
-                    query = f"{query}\n\n[System Note: User has selected the following recommendations. Use this context.]\n{rec_details}"
+                    logger.info(f"Injecting recommendations into query: {recommendation_ids} and detail {rec_details}")
+                    query = rec_details
 
             # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
             if recommendation_ids:
@@ -249,29 +249,61 @@ class OrchestratorService:
     # --------------------------
     def _get_recommendation_details(self, recommendation_ids: List[str]) -> str:
         try:
-            # Construct absolute path to ensure we find the file
-            # Assuming app run from root match_making_backend
             file_path = os.path.abspath("app/mcp/recommendations.json")
             if not os.path.exists(file_path):
-                 logger.error(f"Recommendations file not found at {file_path}")
-                 return ""
+                logger.error(f"Recommendations file not found at {file_path}")
+                return ""
 
             with open(file_path, "r") as f:
                 data = json.load(f)
-            
-            matches = []
-            # Traverse: category -> gender -> list of profiles
+
+            combined_attributes = {}
+
+            # Traverse JSON
             for category, genders in data.items():
                 for gender, profiles in genders.items():
                     for profile in profiles:
-                         if profile.get("id") in recommendation_ids:
-                             matches.append(json.dumps(profile))
-            
-            logger.info(f"Recommendation match details:{matches}")
-            return "\n".join(matches)
-        except Exception as e:
-            logger.error(f"Error loading recommendations: {e}")
+                        if profile.get("id") in recommendation_ids:
+                            logger.info(f"profile {profile}")
+
+                            image_attributes = profile.get("image_attributes", {})
+
+                            for key, value in image_attributes.items():
+                                if not value:
+                                    continue
+
+                                # Normalize key formatting
+                                key_clean = key.replace("_", " ")
+
+                                if key_clean not in combined_attributes:
+                                    combined_attributes[key_clean] = set()
+
+                                combined_attributes[key_clean].add(value)
+
+            if not combined_attributes:
+                return ""
+
+            # Build natural language query
+            parts = []
+            for key, values in combined_attributes.items():
+                values_list = list(values)
+
+                if len(values_list) == 1:
+                    parts.append(f"{values_list[0]} {key}")
+                else:
+                    joined_values = " or ".join(values_list)
+                    parts.append(f"{key} {joined_values}")
+
+            final_query = "I need " + " and ".join(parts) + "."
+
+            logger.info(f"Recommendation match details: {final_query}")
+            return final_query
+
+        except Exception:
+            logger.exception("Error getting recommendation details")
             return ""
+
+
 
     async def _prepare_context(self, user_id: str, session_id: Optional[str] = None):
         """Fetches history and session summary to build context string."""
