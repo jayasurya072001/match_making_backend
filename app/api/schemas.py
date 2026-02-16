@@ -207,6 +207,11 @@ class ChatRequestBody(BaseModel):
         description="Optional list of recommendation ids to be injected into the chat context"
     )
 
+    selected_filters: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Pre-selected filters to bypass LLM and directly execute search"
+    )
+
 class SessionSummary(BaseModel):
     user_id: str
     session_id: Optional[str] = None

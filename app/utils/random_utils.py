@@ -80,7 +80,7 @@ tools_specific_promtps = {
     """,
     "get_profile_recommendations": """
         EXTRACTION RULES
-        1. Extract the main descriptive or style keywords into `query` (e.g., "traditional", "simple", "corporate", "cute").
+        1. Extract the descriptive or style keywords "traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", "graceful", "attractive", "soft_spoken", "royal", "grounded" into `query`.
         2. Detect `gender` from context (e.g. "girl"/"woman" -> "female", "boy"/"man" -> "male").
         3. Do not include unrelated words in `query`.
         4. Output {{"query": "...", "gender": "..."}} (gender is optional).

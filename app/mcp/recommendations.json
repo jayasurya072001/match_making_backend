@@ -3,219 +3,230 @@
         "female": [
             {
                 "id": "trad_f_1",
-                "name": "Classic Traditional",
-                "image_url": "https://i.pinimg.com/736x/65/29/82/65298286b826b76d6a32a4fc3febee97.jpg",
+                "name": "Classic Saree Look",
+                "image_url": "https://i.pinimg.com/1200x/a5/93/62/a59362019c9d609c68f5fbec1db5db6b.jpg",
                 "image_attributes": {
-                    "gender": "Female",
+                    "gender": "female",
                     "attire": "traditional",
-                    "hair": {
-                        "hair_color": "Black",
-                        "hair_style": "Braid"
-                    },
-                    "facial_features": {
-                        "bindi": "Present",
-                        "eyebrow": "Thick"
-                    },
-                    "accessories": {
-                        "earrings": "Gold",
-                        "headwear": "None"
-                    },
-                    "skin_color": "fair",
-                    "body_shape": "slim"
+                    "hair_length": "long",
+                    "emotion": "happy"
                 }
             },
             {
                 "id": "trad_f_2",
                 "name": "Elegant Ethnic",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/traditional_female_2.jpg",
+                "image_url": "https://i.pinimg.com/736x/9f/29/1e/9f291e54c34af1c39ac350b7b1c4d17a.jpg",
                 "image_attributes": {
-                    "gender": "Female",
+                    "gender": "female",
                     "attire": "traditional",
-                    "hair": {
-                        "hair_color": "Black",
-                        "hair_style": "Bun"
-                    },
-                    "accessories": {
-                        "earrings": "Gold",
-                        "necklace": "Gold"
-                    },
-                    "skin_color": "wheatish",
-                    "face_shape": "oval"
+                    "face_shape": "oval",
+                    "skin_color": "brown"
+                }
+            },
+            {
+                "id": "trad_f_3",
+                "name": "Festival Grace",
+                "image_url": "https://i.pinimg.com/736x/ec/fe/ae/ecfeae5cf2696f3bf9e9887281d920a2.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "attire": "traditional",
+                    "eye_size": "large",
+                    "body_shape": "slim"
+                }
+            },
+            {
+                "id": "trad_f_4",
+                "name": "Minimal Ethnic",
+                "image_url": "https://i.pinimg.com/736x/35/e8/13/35e8138983518a189bb003265d5f1d7f.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "attire": "traditional",
+                    "hair_style": "curly",
+                    "emotion": "romantic"
+                }
+            },
+            {
+                "id": "trad_f_5",
+                "name": "Cultural Charm",
+                "image_url": "https://i.pinimg.com/1200x/e7/14/47/e71447b1845fed15dc6c64106a6609f4.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "attire": "traditional",
+                    "face_structure": "symmetric",
+                    "skin_color": "white"
                 }
             }
         ],
         "male": [
             {
                 "id": "trad_m_1",
-                "recommendation": true,
                 "name": "Traditional Groom",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/traditional_male_1.jpg",
+                "image_url": "https://i.pinimg.com/736x/fc/ba/b3/fcbab33db583944fa67dd5c6a2b8c47a.jpg",
                 "image_attributes": {
-                    "gender": "Male",
+                    "gender": "male",
                     "attire": "traditional",
-                    "beard": "Full",
-                    "mustache": "Thick",
-                    "hair": {
-                        "hair_color": "Black",
-                        "hair_style": "Neat"
-                    },
+                    "beard": "full",
+                    "mustache": "thick"
+                }
+            },
+            {
+                "id": "trad_m_2",
+                "name": "Ethnic Leader",
+                "image_url": "https://i.pinimg.com/1200x/16/ec/f0/16ecf0122bd38344ae76c954cd76fbcb.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "attire": "traditional",
+                    "hair_color": "grey",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "trad_m_3",
+                "name": "Festive Style",
+                "image_url": "https://i.pinimg.com/736x/f3/51/d1/f351d1a1c6eae3c4888db4e2a299d272.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "attire": "traditional",
+                    "face_shape": "square",
                     "skin_color": "brown"
                 }
-            }
-        ]
-    },
-    "homely": {
-        "female": [
+            },
             {
-                "id": "home_f_1",
-                "recommendation": true,
-                "name": "Simple & Homely",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/homely_female_1.jpg",
+                "id": "trad_m_4",
+                "name": "Simple Heritage",
+                "image_url": "https://i.pinimg.com/736x/c7/61/cc/c761cc51fbe48a2fc3a30e23ef6d298d.jpg",
                 "image_attributes": {
-                    "gender": "Female",
-                    "attire": "ethnic_casual",
-                    "makeup": "minimal",
-                    "hair": {
-                        "hair_style": "Braid"
-                    },
-                    "accessories": {
-                        "earrings": "Small",
-                        "necklace": "Simple"
-                    },
-                    "facial_features": {
-                        "bindi": "Small"
-                    },
-                    "face_shape": "Soft"
-                }
-            }
-        ],
-        "male": [
-            {
-                "id": "home_m_1",
-                "recommendation": true,
-                "name": "Simple & Down-to-Earth",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/homely_male_1.jpg",
-                "image_attributes": {
-                    "gender": "Male",
-                    "attire": "casual",
-                    "beard": "Clean Shaven",
-                    "hair": {
-                        "hair_style": "Side Part"
-                    },
-                    "emotion": "Warm Smile"
-                }
-            }
-        ]
-    },
-    "professional": {
-        "female": [
-            {
-                "id": "prof_f_1",
-                "recommendation": true,
-                "name": "Corporate Professional",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/professional_female_1.jpg",
-                "image_attributes": {
-                    "gender": "Female",
-                    "attire": "formal_western",
-                    "accessories": {
-                        "eyewear": "Prescription Glasses"
-                    },
-                    "hair": {
-                        "hair_style": "Straight"
-                    },
-                    "makeup": "Subtle"
-                }
-            }
-        ],
-        "male": [
-            {
-                "id": "prof_m_1",
-                "recommendation": true,
-                "name": "Corporate Professional",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/professional_male_1.jpg",
-                "image_attributes": {
-                    "gender": "Male",
-                    "attire": "formal",
-                    "accessories": {
-                        "eyewear": "Prescription Glasses"
-                    },
-                    "beard": "Trimmed",
-                    "hair": {
-                        "hair_style": "Neat"
-                    }
-                }
-            }
-        ]
-    },
-    "modern": {
-        "female": [
-            {
-                "id": "mod_f_1",
-                "recommendation": true,
-                "name": "Modern Chic",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/modern_female_1.jpg",
-                "image_attributes": {
-                    "gender": "Female",
-                    "attire": "western_trendy",
-                    "hair": {
-                        "hair_color": "Brown",
-                        "hair_style": "Open"
-                    },
-                    "accessories": {
-                        "eyewear": "Sunglasses",
-                        "earrings": "Hoops"
-                    },
-                    "lip_stick": "Bold",
-                    "body_shape": "Fit"
+                    "gender": "male",
+                    "attire": "traditional",
+                    "hair_length": "short",
+                    "eye_color": "black"
                 }
             },
             {
-                "id": "trend_f_1",
-                "recommendation": true,
-                "name": "Trendy Fashionista",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/trendy_female_1.jpg",
+                "id": "trad_m_5",
+                "name": "Royal Cultural",
+                "image_url": "https://i.pinimg.com/736x/57/18/46/5718468e787ae45d7f30bcbbcdd87af8.jpg",
                 "image_attributes": {
-                    "gender": "Female",
-                    "attire": "party_wear",
-                    "hair": {
-                        "hair_style": "Styled",
-                        "hair_color": "Highlights"
-                    },
-                    "makeup": "Glam"
+                    "gender": "male",
+                    "attire": "traditional",
+                    "beard": "goatee",
+                    "emotion": "angry"
+                }
+            }
+        ]
+    },
+    "beautiful": {
+        "female": [
+            {
+                "id": "beautiful_f_1",
+                "name": "Radiant Elegance",
+                "image_url": "https://i.pinimg.com/736x/ce/b5/f5/ceb5f5f802c5fb98ed96d1535c4f84b9.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_structure": "symmetric",
+                    "eye_size": "large",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "beautiful_f_2",
+                "name": "Graceful Glow",
+                "image_url": "https://i.pinimg.com/1200x/76/b2/ce/76b2cee82d5e3c6ba953d5b7395cd902.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "oval",
+                    "hair_length": "long",
+                    "emotion": "romantic"
+                }
+            },
+            {
+                "id": "beautiful_f_3",
+                "name": "Soft Beauty",
+                "image_url": "https://i.pinimg.com/736x/9b/e8/39/9be83965086a052b0fb02511b2cd711c.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "skin_color": "white",
+                    "face_size": "medium",
+                    "emotion": "happy"
+                }
+            },
+            {
+                "id": "beautiful_f_4",
+                "name": "Classic Attraction",
+                "image_url": "https://i.pinimg.com/736x/c8/ae/96/c8ae9615192b8db6599725025505629b.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_color": "green",
+                    "face_structure": "symmetric",
+                    "body_shape": "fit"
+                }
+            },
+            {
+                "id": "beautiful_f_5",
+                "name": "Natural Charm",
+                "image_url": "https://i.pinimg.com/1200x/19/f8/6d/19f86dd945f26e90fc8159d41a6532b4.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "diamond",
+                    "hair_style": "straight",
+                    "emotion": "neutral"
                 }
             }
         ],
         "male": [
             {
-                "id": "mod_m_1",
-                "recommendation": true,
-                "name": "Urban Professional",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/modern_male_1.jpg",
+                "id": "beautiful_m_1",
+                "name": "Handsome Balance",
+                "image_url": "https://i.pinimg.com/736x/97/1f/70/971f707debf8c4c0486a457dcd783a62.jpg",
                 "image_attributes": {
-                    "gender": "Male",
-                    "attire": "western_casual",
-                    "beard": "Stubble",
-                    "hair": {
-                        "hair_color": "Black",
-                        "hair_style": "Fade"
-                    },
-                    "accessories": {
-                        "eyewear": "Sunglasses"
-                    }
+                    "gender": "male",
+                    "face_structure": "symmetric",
+                    "face_shape": "oval",
+                    "emotion": "neutral"
                 }
             },
             {
-                "id": "trend_m_1",
-                "recommendation": true,
-                "name": "Trendy & Stylish",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/trendy_male_1.jpg",
+                "id": "beautiful_m_2",
+                "name": "Refined Look",
+                "image_url": "https://i.pinimg.com/736x/1c/64/13/1c641312f10994a38c3e1163714a1ef6.jpg",
                 "image_attributes": {
-                    "gender": "Male",
-                    "attire": "streetwear",
-                    "beard": "Styled",
-                    "hair": {
-                        "hair_style": "Spiked"
-                    }
+                    "gender": "male",
+                    "beard": "stubble",
+                    "eye_size": "large",
+                    "face_size": "medium"
+                }
+            },
+            {
+                "id": "beautiful_m_3",
+                "name": "Charming Presence",
+                "image_url": "https://i.pinimg.com/1200x/d8/4b/5b/d84b5b4c403e0f5b858388935632d3ab.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "hair_length": "short",
+                    "face_shape": "square",
+                    "emotion": "romantic"
+                }
+            },
+            {
+                "id": "beautiful_m_4",
+                "name": "Attractive Smile",
+                "image_url": "https://i.pinimg.com/1200x/39/54/7e/39547e9a09b7d83a2ce340b1926d58ab.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "eye_color": "blue",
+                    "face_structure": "symmetric",
+                    "body_shape": "fit"
+                }
+            },
+            {
+                "id": "beautiful_m_5",
+                "name": "Classic Handsome",
+                "image_url": "https://i.pinimg.com/736x/ef/50/c3/ef50c37246078a32d6ea799c21456164.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "mustache": "thin",
+                    "face_shape": "diamond",
+                    "emotion": "happy"
                 }
             }
         ]
@@ -224,77 +235,694 @@
         "female": [
             {
                 "id": "cute_f_1",
-                "recommendation": true,
-                "name": "Bubbly Charm",
-                "image_url": "https://i.pinimg.com/1200x/46/73/e0/4673e0cf8aa1e9d4aeb294ac13384141.jpg",
+                "name": "Playful Smile",
+                "image_url": "https://i.pinimg.com/1200x/7e/0b/6f/7e0b6fe6eef40b2f578ea31214d4008c.jpg",
                 "image_attributes": {
-                    "gender": "Female",
-                    "face_shape": "Round",
-                    "eye_size": "Large",
-                    "emotion": "Happy",
-                    "attire": "casual"
+                    "gender": "female",
+                    "emotion": "happy",
+                    "eye_size": "large",
+                    "face_shape": "round"
                 }
             },
             {
                 "id": "cute_f_2",
-                "name": "Roby Round",
-                "image_url": "https://i.pinimg.com/736x/ba/33/63/ba3363a19ffc9b1dd0ea3d230a879747.jpg",
+                "name": "Soft Innocence",
+                "image_url": "https://i.pinimg.com/736x/a0/4b/20/a04b201e9aa7d4e1a7857451870c3b42.jpg",
                 "image_attributes": {
-                    "gender": "Female",
-                    "eye_size": "small",
-                    "attire": "traditional"
+                    "gender": "female",
+                    "emotion": "romantic",
+                    "hair_length": "long",
+                    "face_structure": "symmetric"
+                }
+            },
+            {
+                "id": "cute_f_3",
+                "name": "Bright Charm",
+                "image_url": "https://i.pinimg.com/1200x/ed/be/b5/edbeb5b6ed779ecab8fe015741805505.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "cheerful",
+                    "eye_size": "normal",
+                    "body_shape": "slim"
+                }
+            },
+            {
+                "id": "cute_f_4",
+                "name": "Sweet Expression",
+                "image_url": "https://i.pinimg.com/736x/11/8c/54/118c5420121a8e130dd3d83790c0d9cd.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "happy",
+                    "hair_style": "curly",
+                    "face_size": "small"
+                }
+            },
+            {
+                "id": "cute_f_5",
+                "name": "Gentle Glow",
+                "image_url": "https://i.pinimg.com/736x/a8/a1/a2/a8a1a24d5e9d487b5a25b58ec7a904dd.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "neutral",
+                    "eye_size": "large",
+                    "skin_color": "white"
                 }
             }
         ],
         "male": [
             {
                 "id": "cute_m_1",
-                "recommendation": true,
-                "name": "Chocolate Boy",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/cute_male_1.jpg",
+                "name": "Boyish Smile",
+                "image_url": "https://i.pinimg.com/736x/96/eb/7e/96eb7e0e0ac8d7eb5f7c6b5347dba13f.jpg",
                 "image_attributes": {
-                    "gender": "Male",
-                    "beard": "None",
-                    "hair": {
-                        "hair_style": "Wavy"
-                    },
-                    "emotion": "Happy",
+                    "gender": "male",
+                    "emotion": "happy",
+                    "beard": "stubble",
                     "face_shape": "oval"
+                }
+            },
+            {
+                "id": "cute_m_2",
+                "name": "Friendly Face",
+                "image_url": "https://i.pinimg.com/736x/c8/5e/79/c85e79a4bcb7763660e42e8731a25edb.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "cheerful",
+                    "hair_length": "short",
+                    "eye_size": "normal"
+                }
+            },
+            {
+                "id": "cute_m_3",
+                "name": "Soft Look",
+                "image_url": "https://i.pinimg.com/736x/5f/38/43/5f3843c1aecbdcd8e43134825376683b.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "romantic",
+                    "face_structure": "symmetric",
+                    "body_shape": "slim"
+                }
+            },
+            {
+                "id": "cute_m_4",
+                "name": "Charming Smile",
+                "image_url": "https://i.pinimg.com/736x/7b/ab/e9/7babe90c5a96735861dfb15c0fe6fbe6.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "happy",
+                    "hair_style": "straight",
+                    "face_size": "medium"
+                }
+            },
+            {
+                "id": "cute_m_5",
+                "name": "Innocent Vibe",
+                "image_url": "https://i.pinimg.com/736x/88/c3/5a/88c35a77a55c3a54a4b9d2d9d1c54b08.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "neutral",
+                    "eye_size": "large",
+                    "skin_color": "brown"
                 }
             }
         ]
     },
-    "beautiful": {
+    "bold": {
         "female": [
             {
-                "id": "beat_f_1",
-                "name": "Radiant Beauty",
-                "image_url": "https://i.pinimg.com/736x/18/48/c0/1848c0bf97cc3e932fcd9a4aed3421f9.jpg",
+                "id": "bold_f_1",
+                "name": "Fearless Energy",
+                "image_url": "https://i.pinimg.com/1200x/ff/d3/2e/ffd32ef7725265093071e0e8bc47bf74.jpg",
                 "image_attributes": {
-                    "gender": "Female",
-                    "face_structure": "Symmetric",
-                    "skin_color": "Fair",
-                    "hair_length": "Medium",
-                    "hair_style": "Wavy",
+                    "gender": "female",
+                    "emotion": "angry",
+                    "face_shape": "square",
+                    "body_shape": "fit"
+                }
+            },
+            {
+                "id": "bold_f_2",
+                "name": "Strong Presence",
+                "image_url": "https://i.pinimg.com/736x/8b/07/cc/8b07ccdff47dbf834088327ae904053a.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "serious",
+                    "hair_style": "straight",
+                    "face_size": "medium"
+                }
+            },
+            {
+                "id": "bold_f_3",
+                "name": "Sharp Confidence",
+                "image_url": "https://i.pinimg.com/736x/36/ac/0b/36ac0bc703d64752466fc8c1f901463d.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_size": "normal",
+                    "face_structure": "symmetric",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "bold_f_4",
+                "name": "Intense Look",
+                "image_url": "https://i.pinimg.com/1200x/8b/02/c5/8b02c585f19aa711d2e9109cad37c2c7.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "diamond",
+                    "emotion": "angry",
+                    "hair_length": "medium"
+                }
+            },
+            {
+                "id": "bold_f_5",
+                "name": "Power Aura",
+                "image_url": "https://i.pinimg.com/736x/a8/74/65/a87465275efcdcbb5f9201ad6473c0fa.jpg",
+                "image_attributes": {
+                    "gender": "female",
                     "eye_color": "black",
-                    "attire": "western"
+                    "body_shape": "fit",
+                    "emotion": "serious"
                 }
             }
         ],
         "male": [
             {
-                "id": "beat_m_1",
-                "name": "Dashing Looks",
-                "image_url": "https://mfwstorage1.blob.core.windows.net/face-attributes/beautiful_male_1.jpg",
+                "id": "bold_m_1",
+                "name": "Dominant Style",
+                "image_url": "https://i.pinimg.com/1200x/57/c2/c7/57c2c7167281dd251c6f01e4313f911b.jpg",
                 "image_attributes": {
-                    "gender": "Male",
-                    "face_structure": "Symmetric",
-                    "height": 6.0,
-                    "body_shape": "Athletic",
-                    "beard": "Stubble",
-                    "hair": {
-                        "hair_style": "Pompadour"
-                    }
+                    "gender": "male",
+                    "beard": "full",
+                    "face_shape": "square",
+                    "emotion": "serious"
+                }
+            },
+            {
+                "id": "bold_m_2",
+                "name": "Commanding Face",
+                "image_url": "https://i.pinimg.com/1200x/55/4c/96/554c96957dffc384d8480ac541ff16b8.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "mustache": "thick",
+                    "emotion": "angry",
+                    "face_size": "large"
+                }
+            },
+            {
+                "id": "bold_m_3",
+                "name": "Strong Jawline",
+                "image_url": "https://i.pinimg.com/1200x/7f/c9/a7/7fc9a7e33e4f6ac781e0550d670e4f3c.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "face_structure": "symmetric",
+                    "hair_length": "short",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "bold_m_4",
+                "name": "Fearless Attitude",
+                "image_url": "https://i.pinimg.com/736x/4f/0a/0e/4f0a0e5242c22b392f1f200d390e29b4.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "eye_color": "black",
+                    "body_shape": "fit",
+                    "emotion": "serious"
+                }
+            },
+            {
+                "id": "bold_m_5",
+                "name": "Sharp Look",
+                "image_url": "https://i.pinimg.com/736x/63/04/38/63043811c73520e797019a9858611cf0.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "hair_style": "straight",
+                    "face_shape": "diamond",
+                    "emotion": "angry"
+                }
+            }
+        ]
+    },
+    "confident": {
+        "female": [
+            {
+                "id": "conf_f_1",
+                "name": "Bold Presence",
+                "image_url": "https://i.pinimg.com/1200x/8c/6a/78/8c6a785483ee3e92d8163f2fac2cc567.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "neutral",
+                    "face_shape": "square",
+                    "body_shape": "fit"
+                }
+            },
+            {
+                "id": "conf_f_2",
+                "name": "Strong Aura",
+                "image_url": "https://i.pinimg.com/736x/a3/11/4f/a3114ffb3a09c09e0e5d9b7d4d1500c0.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_structure": "symmetric",
+                    "emotion": "serious",
+                    "hair_style": "straight"
+                }
+            },
+            {
+                "id": "conf_f_3",
+                "name": "Fearless Look",
+                "image_url": "https://i.pinimg.com/736x/70/28/11/70281125e22418622201b52ec7f8f4e7.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_size": "normal",
+                    "face_size": "medium",
+                    "emotion": "angry"
+                }
+            },
+            {
+                "id": "conf_f_4",
+                "name": "Independent Charm",
+                "image_url": "https://cdn2.stylecraze.com/wp-content/uploads/2013/07/7.Mallika-Sherawat.jpg.webp",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "diamond",
+                    "hair_length": "medium",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "conf_f_5",
+                "name": "Determined Grace",
+                "image_url": "https://i.pinimg.com/736x/dd/11/fe/dd11fe5ca7652b54f222a01f73be4296.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_color": "black",
+                    "body_shape": "fit",
+                    "emotion": "serious"
+                }
+            }
+        ],
+        "male": [
+            {
+                "id": "conf_m_1",
+                "name": "Alpha Presence",
+                "image_url": "https://i.pinimg.com/736x/33/7c/87/337c87e487ec96cf21cd38d24a3bb0d2.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "beard": "full",
+                    "face_shape": "square",
+                    "emotion": "serious"
+                }
+            },
+            {
+                "id": "conf_m_2",
+                "name": "Firm Expression",
+                "image_url": "https://i.pinimg.com/736x/72/d1/59/72d1593fe5079977c9b90150993c2ce3.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "face_structure": "symmetric",
+                    "emotion": "neutral",
+                    "hair_length": "short"
+                }
+            },
+            {
+                "id": "conf_m_3",
+                "name": "Commanding Look",
+                "image_url": "https://i.pinimg.com/1200x/7e/eb/ad/7eebad62bf8cb04fa080eca1f2006e3a.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "mustache": "thick",
+                    "face_size": "large",
+                    "emotion": "angry"
+                }
+            },
+            {
+                "id": "conf_m_4",
+                "name": "Steady Focus",
+                "image_url": "https://i.pinimg.com/736x/0b/c9/6a/0bc96a4247eeb2f8af9b02081c5a32cf.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "eye_color": "black",
+                    "body_shape": "fit",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "conf_m_5",
+                "name": "Bold Attitude",
+                "image_url": "https://i.pinimg.com/736x/94/7a/f0/947af0734c698b0cd87103c1a5e95d5c.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "hair_style": "straight",
+                    "face_shape": "oval",
+                    "emotion": "serious"
+                }
+            }
+        ]
+    },
+    "elegant": {
+        "female": [
+            {
+                "id": "eleg_f_1",
+                "name": "Graceful Beauty",
+                "image_url": "https://i.pinimg.com/1200x/46/39/16/463916c4f7a7ff4a0a0962a34fe7aa40.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_structure": "symmetric",
+                    "emotion": "neutral",
+                    "hair_length": "long"
+                }
+            },
+            {
+                "id": "eleg_f_2",
+                "name": "Refined Glow",
+                "image_url": "https://i.pinimg.com/736x/5a/07/20/5a0720035be3752759d3767507dc016c.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "oval",
+                    "eye_size": "large",
+                    "emotion": "romantic"
+                }
+            },
+            {
+                "id": "eleg_f_3",
+                "name": "Classic Poise",
+                "image_url": "https://i.pinimg.com/736x/59/0e/c5/590ec5358c41604509def6738fbf2c0d.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "hair_style": "straight",
+                    "face_size": "medium",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "eleg_f_4",
+                "name": "Soft Sophistication",
+                "image_url": "https://i.pinimg.com/736x/4d/46/87/4d468761a063bc4388602278a32a6d26.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_color": "grey",
+                    "face_structure": "symmetric",
+                    "body_shape": "slim"
+                }
+            },
+            {
+                "id": "eleg_f_5",
+                "name": "Timeless Charm",
+                "image_url": "https://i.pinimg.com/736x/5e/48/72/5e4872739cb8f9d666214e7f1ecbcdef.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "diamond",
+                    "hair_length": "medium",
+                    "emotion": "neutral"
+                }
+            }
+        ],
+        "male": [
+            {
+                "id": "eleg_m_1",
+                "name": "Refined Gentleman",
+                "image_url": "https://i.pinimg.com/736x/83/2f/b3/832fb3e2b814af0938010f78ec9d142e.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "face_structure": "symmetric",
+                    "emotion": "neutral",
+                    "hair_style": "straight"
+                }
+            },
+            {
+                "id": "eleg_m_2",
+                "name": "Classic Appeal",
+                "image_url": "https://i.pinimg.com/1200x/9d/98/65/9d98653b9fcf52a322cd8b24c188bd22.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "face_shape": "oval",
+                    "eye_size": "normal",
+                    "emotion": "romantic"
+                }
+            },
+            {
+                "id": "eleg_m_3",
+                "name": "Sophisticated Look",
+                "image_url": "https://i.pinimg.com/736x/c0/dd/a3/c0dda39a2143fb7a60699d86fd3046ef.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "hair_length": "short",
+                    "face_size": "medium",
+                    "emotion": "neutral"
+                }
+            },
+            {
+                "id": "eleg_m_4",
+                "name": "Polished Style",
+                "image_url": "https://i.pinimg.com/736x/bd/8d/2e/bd8d2e74e3fd1088f4995ae881e9848a.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "beard": "stubble",
+                    "face_structure": "symmetric",
+                    "emotion": "serious"
+                }
+            },
+            {
+                "id": "eleg_m_5",
+                "name": "Subtle Grace",
+                "image_url": "https://i.pinimg.com/1200x/a9/91/b8/a991b8ccdf7ded6fe56fb3f502bc5a78.jpg",
+                "image_attributes": {
+                    "gender": "male",
+                    "eye_color": "grey",
+                    "face_shape": "diamond",
+                    "emotion": "neutral"
+                }
+            }
+        ]
+    },
+    "mysterious": {
+        "female": [
+            {
+                "id": "myst_f_1",
+                "name": "Enigmatic Gaze",
+                "image_url": " https://i.pinimg.com/736x/fb/62/57/fb6257b97649e9c5aedd58b8de26638d.jpg",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "neutral",
+                    "eye_color": "black",
+                    "face_shape": "oval"
+                }
+            },
+            {
+                "id": "myst_f_2",
+                "name": "Silent Charm",
+                "image_url": " https://i.pinimg.com/736x/88/de/5b/88de5becc0966547879829589d093d31.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "serious",
+                    "hair_length": "long",
+                    "face_structure": "symmetric"
+                }
+            },
+            {
+                "id": "myst_f_3",
+                "name": "Hidden Smile",
+                "image_url": " https://i.pinimg.com/736x/28/2c/1e/282c1e3c6b5542a507ad02e39a034f72.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_size": "large",
+                    "emotion": "neutral",
+                    "face_size": "medium"
+                }
+            },
+            {
+                "id": "myst_f_4",
+                "name": "Shadow Grace",
+                "image_url": " https://i.pinimg.com/736x/5f/4b/47/5f4b47fbec052456870c36a56be86cd8.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "diamond",
+                    "emotion": "serious",
+                    "hair_style": "straight"
+                }
+            },
+            {
+                "id": "myst_f_5",
+                "name": "Deep Presence",
+                "image_url": " https://i.pinimg.com/1200x/77/f6/8b/77f68b9be18126ce7d59c145cb34aa04.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_color": "grey",
+                    "emotion": "neutral",
+                    "body_shape": "slim"
+                }
+            }
+        ],
+        "male": [
+            {
+                "id": "myst_m_1",
+                "name": "Quiet Intensity",
+                "image_url": " https://i.pinimg.com/1200x/c5/22/ed/c522eddc6c71d66ad9fb14f1e346d33a.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "serious",
+                    "beard": "stubble",
+                    "face_shape": "square"
+                }
+            },
+            {
+                "id": "myst_m_2",
+                "name": "Shadow Look",
+                "image_url": " https://i.pinimg.com/1200x/78/81/12/788112e5aa626a9aabb4da9f7d1bac03.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "eye_color": "black",
+                    "emotion": "neutral",
+                    "hair_length": "medium"
+                }
+            },
+            {
+                "id": "myst_m_3",
+                "name": "Silent Confidence",
+                "image_url": " https://i.pinimg.com/1200x/1a/50/17/1a50173e692dce3aa3e967c75cde58f3.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "face_structure": "symmetric",
+                    "emotion": "serious",
+                    "face_size": "large"
+                }
+            },
+            {
+                "id": "myst_m_4",
+                "name": "Deep Eyes",
+                "image_url": " https://i.pinimg.com/736x/21/b1/05/21b10596de6c65534d8ff22ae4b1ac98.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "eye_size": "large",
+                    "emotion": "neutral",
+                    "hair_style": "straight"
+                }
+            },
+            {
+                "id": "myst_m_5",
+                "name": "Dark Charm",
+                "image_url": " https://i.pinimg.com/1200x/9a/21/2b/9a212b50601e724a3bc5bc3881a6c006.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "face_shape": "diamond",
+                    "emotion": "serious",
+                    "body_shape": "fit"
+                }
+            }
+        ]
+    },
+    "cheerful": {
+        "female": [
+            {
+                "id": "cheer_f_1",
+                "name": "Bright Smile",
+                "image_url": " https://i.pinimg.com/736x/0b/08/13/0b0813d706cdf7b53561e0aeeff49e58.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "happy",
+                    "eye_size": "large",
+                    "face_shape": "round"
+                }
+            },
+            {
+                "id": "cheer_f_2",
+                "name": "Joyful Glow",
+                "image_url": " https://i.pinimg.com/736x/93/cd/71/93cd7155f0ef66bb3eef1ef24c79ef8c.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "emotion": "happy",
+                    "hair_length": "medium",
+                    "face_structure": "symmetric"
+                }
+            },
+            {
+                "id": "cheer_f_3",
+                "name": "Sunny Expression",
+                "image_url": " https://i.pinimg.com/1200x/d7/78/35/d77835ea95e54ddbae7a3733152d4a5c.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "eye_color": "green",
+                    "emotion": "happy",
+                    "body_shape": "slim"
+                }
+            },
+            {
+                "id": "cheer_f_4",
+                "name": "Happy Spark",
+                "image_url": " https://i.pinimg.com/736x/c1/30/40/c13040ea35beeab13d0f5cfedf5741fc.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_size": "small",
+                    "emotion": "happy",
+                    "hair_style": "curly"
+                }
+            },
+            {
+                "id": "cheer_f_5",
+                "name": "Playful Energy",
+                "image_url": " https://i.pinimg.com/736x/1b/b7/34/1bb734850bd3195fc8a02b522704bd1b.jpg ",
+                "image_attributes": {
+                    "gender": "female",
+                    "face_shape": "oval",
+                    "emotion": "happy",
+                    "skin_color": "brown"
+                }
+            }
+        ],
+        "male": [
+            {
+                "id": "cheer_m_1",
+                "name": "Friendly Smile",
+                "image_url": " https://i.pinimg.com/736x/1b/02/ed/1b02ed4ba388cf113442fd473a5f5030.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "happy",
+                    "face_shape": "oval",
+                    "hair_length": "short"
+                }
+            },
+            {
+                "id": "cheer_m_2",
+                "name": "Energetic Look",
+                "image_url": " https://i.pinimg.com/736x/83/bd/80/83bd80be7f6423ce4d3c1ef103503c72.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "happy",
+                    "eye_size": "normal",
+                    "body_shape": "fit"
+                }
+            },
+            {
+                "id": "cheer_m_3",
+                "name": "Joyful Presence",
+                "image_url": " https://i.pinimg.com/736x/c7/61/cc/c761cc51fbe48a2fc3a30e23ef6d298d.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "happy",
+                    "face_structure": "symmetric",
+                    "beard": "stubble"
+                }
+            },
+            {
+                "id": "cheer_m_4",
+                "name": "Positive Vibe",
+                "image_url": " https://i.pinimg.com/1200x/56/ab/5e/56ab5ed6bdc4f13325008bacd8e6e9ca.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "happy",
+                    "eye_color": "black",
+                    "face_size": "medium"
+                }
+            },
+            {
+                "id": "cheer_m_5",
+                "name": "Bright Energy",
+                "image_url": " https://i.pinimg.com/1200x/0e/d0/9a/0ed09ad2ad383e75ed57f62ee8e7933c.jpg ",
+                "image_attributes": {
+                    "gender": "male",
+                    "emotion": "happy",
+                    "face_shape": "square",
+                    "hair_style": "straight"
                 }
             }
         ]

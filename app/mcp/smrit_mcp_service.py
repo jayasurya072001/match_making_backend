@@ -372,7 +372,7 @@ def load_recommendations():
 
 @mcp.tool()
 async def get_profile_recommendations(
-    query: str,
+    query: Optional[Union[Literal["traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", "graceful", "attractive", "soft_spoken", "royal", "grounded"], List[Literal["traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", "graceful", "attractive", "soft_spoken", "royal", "grounded"]]]] = None,
     gender: Optional[Literal["male", "female"]] = None
 ) -> Any:
     """
@@ -402,47 +402,14 @@ async def get_profile_recommendations(
     - A list of visual cards (archetypes) containing an image_url and a set of predefined attributes 
       corresponding to that style.
     """
-    query = query.lower()
+    target_styles = []
+    target_styles.append(query)
     
     # Load recommendations data dynamically
     RECOMMENDATIONS = load_recommendations()
     
     recommendations = []
-    
-    # Simple keyword matching
-    target_styles = []
-    
-    # 1. Homely / Simple
-    if any(k in query for k in ["homely", "simple", "family", "down to earth", "traditional"]):
-        target_styles.append("homely")
-        # Traditional is often synonymous with homely in this context, but we can keep them distinct if needed.
-        # If user explicitly asks for "traditional", we can add both.
-        if "traditional" in query:
-             target_styles.append("traditional")
-    
-    # 2. Professional / Corporate
-    if any(k in query for k in ["professional", "corporate", "working", "job", "career", "educated", "office"]):
-        target_styles.append("professional")
 
-    # 3. Modern / Stylish / Trendy
-    if any(k in query for k in ["modern", "stylish", "trendy", "fashion", "western", "cool"]):
-        target_styles.append("modern")
-
-    # 4. Cute
-    if "cute" in query or "bubbly" in query or "chocolate" in query:
-        target_styles.append("cute")
-        
-    # 5. Beautiful / Handsome
-    if any(k in query for k in ["beautiful", "handsome", "good looking", "pretty", "attractive", "radiant", "dashing"]):
-        target_styles.append("beautiful")
-        
-    # Determine gender from query if not provided
-    if not gender:
-        if any(k in query for k in ["girl", "woman", "female", "lady", "bride", "wife", "partner"]):
-            gender = "female"
-        elif any(k in query for k in ["boy", "man", "male", "guy", "groom", "husband"]):
-            gender = "male"
-            
     # Collect recommendations
     for style in target_styles:
         if style in RECOMMENDATIONS:
@@ -468,10 +435,21 @@ async def get_profile_recommendations(
         }
         
     return {
-        "message": f"Here are some visual styles based on '{query}':",
         "recommendation": True,
         "docs": recommendations,
-        "instruction": "Select a profile to continue search with these visual attributes."
+        "instruction": """You are a Recommendation Agent.
+                    Your task is to present predefined profiles to the user and ask them to choose which one matches their type.
+                    Rules:
+                    Only use the profiles provided to you.
+                    Do not create new profiles.
+                    Keep descriptions short (2–3 lines each).
+                    After listing them, ask the user to choose.
+                    After listing them, clearly tell the user they must choose
+                    Do not be overly descriptive or explicit.
+                    Keep it funny.
+                    Keep the tone friendly and casual."
+                    EXAMPLE: Hey who looks cute for you? choose among these matches.
+                     """
     }
 
 @mcp.tool()
