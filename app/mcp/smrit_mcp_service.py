@@ -84,24 +84,64 @@ async def search_profiles(
     # Flattened Attributes
     min_age: int | None = None,
     max_age: int | None = None,
-    gender: Optional[Literal["male", "female"]] = None,
-    age_group: Optional[Literal["teen", "adult", "senior"]] = None,
-    ethnicity: Optional[Literal["white", "black", "asian", "brown"]] = None,
-    hair_color: Optional[Literal["black", "blonde", "white", "grey", "others"]] = None,
-    eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None,
-    face_shape: Optional[Literal["oval", "round", "square", "diamond"]] = None,
-    head_hair: Optional[Literal["present", "absent"]] = None,
-    beard: Optional[Literal["stubble", "full", "goatee"]] = None,
-    mustache: Optional[Literal["thin", "thick", "handlebar"]] = None,
-    hair_style: Optional[Literal["straight", "curly"]] = None,
-    emotion: Optional[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]] = None,
-    fore_head_height: Optional[Literal["low", "high"]] = None,
-    eyewear: Optional[Literal["prescription_glasses", "sunglasses"]] = None,
-    headwear: Optional[Literal["hat", "cap", "turban"]] = None,
-    eyebrow: Optional[Literal["present", "absent"]] = None,
-    
+    gender: Optional[
+        Union[Literal["male", "female"], List[Literal["male", "female"]]]
+    ] = None,
+    age_group: Optional[
+        Union[Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]]
+    ] = None,
+    ethnicity: Optional[
+        Union[Literal["white", "black", "asian", "brown"], List[Literal["white", "black", "asian", "brown"]]]
+    ] = None,
+    hair_color: Optional[
+        Union[
+            Literal["black", "blonde", "white", "grey", "others"],
+            List[Literal["black", "blonde", "white", "grey", "others"]]
+        ]
+    ] = None,
+    eye_color: Optional[
+        Union[Literal["blue", "green", "grey", "black"], List[Literal["blue", "green", "grey", "black"]]]
+    ] = None,
+    face_shape: Optional[
+        Union[Literal["oval", "round", "square", "diamond"], List[Literal["oval", "round", "square", "diamond"]]]
+    ] = None,
+    head_hair: Optional[
+        Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
+    ] = None,
+    beard: Optional[
+        Union[Literal["stubble", "full", "goatee"], List[Literal["stubble", "full", "goatee"]]]
+    ] = None,
+    mustache: Optional[
+        Union[Literal["thin", "thick", "handlebar"], List[Literal["thin", "thick", "handlebar"]]]
+    ] = None,
+    hair_style: Optional[
+        Union[Literal["straight", "curly"], List[Literal["straight", "curly"]]]
+    ] = None,
+    emotion: Optional[
+        Union[
+            Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
+            List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]]
+        ]
+    ] = None,
+    fore_head_height: Optional[
+        Union[Literal["low", "high"], List[Literal["low", "high"]]]
+    ] = None,
+    eyewear: Optional[
+        Union[
+            Literal["prescription_glasses", "sunglasses"],
+            List[Literal["prescription_glasses", "sunglasses"]]
+        ]
+    ] = None,
+    headwear: Optional[
+        Union[Literal["hat", "cap", "turban"], List[Literal["hat", "cap", "turban"]]]
+    ] = None,
+    eyebrow: Optional[
+        Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
+    ] = None,
     # New Fields
-    mole: Optional[Literal["Normal", "Unibrow"]] = None, 
+    mole: Optional[
+        Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
+    ] = None,
     scars: Optional[str] = None,
     earrings: Optional[str] = None,
 
@@ -112,19 +152,30 @@ async def search_profiles(
             List[Literal["casual", "western", "traditional", "formal"]]
         ]
     ] = None,
-    body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None, 
-    lip_stick: Optional[Literal["no", "yes", "none"]] = None, 
-    skin_color: Optional[Literal["white", "black", "none", "brown"]] = None,
+    body_shape: Optional[
+    Union[Literal["fit", "slim", "fat", "none"], List[Literal["fit", "slim", "fat", "none"]]]
+    ] = None,
+    lip_stick: Optional[
+        Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
+    ] = None,
+    skin_color: Optional[
+        Union[Literal["white", "black", "none", "brown"], List[Literal["white", "black", "none", "brown"]]]
+    ] = None,
     eye_size: Optional[
         Union[
             Literal["normal", "large", "small", "None"],
             List[Literal["normal", "large", "small", "None"]]
         ]
     ] = None,
-    face_size: Optional[Literal["large", "medium", "small"]] = None, 
-    face_structure: Optional[Literal["symmetric", "asymmetric"]] = None, 
-    hair_length: Optional[Literal["long", "medium", "short"]] = None,
-
+    face_size: Optional[
+        Union[Literal["large", "medium", "small"], List[Literal["large", "medium", "small"]]]
+    ] = None,
+    face_structure: Optional[
+        Union[Literal["symmetric", "asymmetric"], List[Literal["symmetric", "asymmetric"]]]
+    ] = None,
+    hair_length: Optional[
+        Union[Literal["long", "medium", "short"], List[Literal["long", "medium", "short"]]]
+    ] = None,
     # Numeric Ranges
     min_height: Optional[float] = None,
     max_height: Optional[float] = None,
@@ -134,23 +185,68 @@ async def search_profiles(
     max_annual_income: Optional[int] = None,
 
     # Categorical
-    diet: Optional[Literal["veg", "nonveg", "egg", "jain"]] = None, 
-    drinking: Optional[Literal["yes", "no"]] = None, 
-    smoking: Optional[Literal["yes", "no"]] = None, 
-    family_type: Optional[Literal["nuclear", "joint"]] = None, 
-    family_values: Optional[Literal["traditional", "moderate", "liberal"]] = None, 
-    father_occupation: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
-    mother_occupation: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
-    highest_qualification: Optional[Literal["phd", "graduate", "post graduate", "diploma"]] = None, 
-    marital_status: Optional[Literal["single"]] = None, 
-    mother_tongue: Optional[Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"]] = None, 
-    profession: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
-    religion: Optional[Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"]] = None, 
-    
+        
+    diet: Optional[
+        Union[Literal["veg", "nonveg", "egg", "jain"], List[Literal["veg", "nonveg", "egg", "jain"]]]
+    ] = None,
+    drinking: Optional[
+        Union[Literal["yes", "no"], List[Literal["yes", "no"]]]
+    ] = None,
+    smoking: Optional[
+        Union[Literal["yes", "no"], List[Literal["yes", "no"]]]
+    ] = None,
+    family_type: Optional[
+        Union[Literal["nuclear", "joint"], List[Literal["nuclear", "joint"]]]
+    ] = None,
+    family_values: Optional[
+        Union[
+            Literal["traditional", "moderate", "liberal"],
+            List[Literal["traditional", "moderate", "liberal"]]
+        ]
+    ] = None,
+    father_occupation: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]]
+        ]
+    ] = None,
+    mother_occupation: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]]
+        ]
+    ] = None,
+    highest_qualification: Optional[
+        Union[
+            Literal["phd", "graduate", "post graduate", "diploma"],
+            List[Literal["phd", "graduate", "post graduate", "diploma"]]
+        ]
+    ] = None,
+    marital_status: Optional[
+        Union[Literal["single"], List[Literal["single"]]]
+    ] = None,
+    mother_tongue: Optional[
+        Union[
+            Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"],
+            List[Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"]]
+        ]
+    ] = None,
+    profession: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]]
+        ]
+    ] = None,
+    religion: Optional[
+        Union[
+            Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"],
+            List[Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"]]
+        ]
+    ] = None,
     # Simple strings/lists but typed as str for MCP simplicity (comma-sep)
     # The prompt actually lists specific options for speaking_languages too but as a list example.
-    speaking_languages: Optional[str] = None, 
-    tags: Optional[str] = None # comma separated tags
+    speaking_languages: Optional[Union[Literal["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "marathi", "gujarati", "punjabi", "kashmiri"], List[Literal["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "marathi", "gujarati", "punjabi", "kashmiri"]]]] = None,
+    tags: Optional[Union[Literal["party_lover", "nature_lover", "extrovert", "introvert", "explorer", "adventurer", "outdoor_lover", "influencer", "food_lover", "music_lover", "traveler", "gamer", "traditional"], List[Literal["party_lover", "nature_lover", "extrovert", "introvert", "explorer", "adventurer", "outdoor_lover", "influencer", "food_lover", "music_lover", "traveler", "gamer", "traditional"]]]] = None
 
 
 ) -> Any:
@@ -199,9 +295,6 @@ async def search_profiles(
     income_range = normalize_range(
         min_annual_income, max_annual_income, 0, 1000, int
     )
-
-    # Convert tags string to list if present
-    tags_list = [t.strip() for t in tags.split(',')] if tags else None
     
     # Convert speaking_languages to list if present and comma-sep
     # Check if speaking_languages is intended as single or list? 
@@ -259,7 +352,7 @@ async def search_profiles(
         "profession": profession,
         "religion": religion,
         "speaking_languages": speaking_languages,
-        "tags": tags_list
+        "tags": tags
 
 
     }

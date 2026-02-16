@@ -198,6 +198,9 @@ async def _validate_combination(
             "search_profiles",
             {**test_args, "k": 1}
         )
+        
+        print("result combination mcp")
+        print(result)
 
         # ---- Validate top-level response ----
         if not isinstance(result, dict) or not result.get("success"):
