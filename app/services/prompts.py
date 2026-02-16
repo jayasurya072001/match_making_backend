@@ -178,12 +178,6 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
 
         You must choose EXACTLY ONE decision from the list below.
 
-        CRITICAL RULES:
-        - You MUST ONLY return one of these decisions: "tool", "no_tool", "ask_clarification", "inappropriate_block", "about_agent", "gibberish"
-        - DO NOT return tool names (e.g., "search_profiles", "cross_location_visual_search")
-        - DO NOT return any other values
-        - ONLY return the decision type
-
         --------------------------------------------------
         DECISION TYPES (ONLY ONE):
         --------------------------------------------------
@@ -306,12 +300,12 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         OUTPUT FORMAT (JSON ONLY):
         --------------------------------------------------
         CRITICAL: Only return ONE of these exact values in the "decision" field:
-        - "tool"
-        - "no_tool"
-        - "ask_clarification"
-        - "inappropriate_block"
-        - "about_agent"
-        - "gibberish"
+            - "tool"
+            - "no_tool"
+            - "ask_clarification"
+            - "inappropriate_block"
+            - "about_agent"
+            - "gibberish"
         
         DO NOT return tool names or any other values.
         

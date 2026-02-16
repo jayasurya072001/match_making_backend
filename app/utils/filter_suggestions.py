@@ -9,6 +9,7 @@ ensure results exist before presenting them to users.
 import logging
 from typing import List, Dict, Any, Tuple, Optional
 import random
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -96,14 +97,15 @@ def _create_location_based_combinations(
 ) -> List[Dict[str, Any]]:
     """
     Create filter combinations using predefined locations.
+    Scales combination size based on original query complexity.
     
     Args:
         tool_args: Original tool arguments
         categorized_filters: Filters organized by category
-        size: Number of filters per combination
+        size: Base number of filters per combination
         
     Returns:
-        List of filter combinations
+        List of filter combinations with varying sizes
     """
     combinations = []
     
@@ -118,25 +120,51 @@ def _create_location_based_combinations(
     # Pool of additional filters to choose from
     additional_filters = appearance + lifestyle + other
     
-    # Create combinations for each predefined location
-    for location in PREDEFINED_LOCATIONS:
+    # Determine combination strategy based on available filters
+    # For larger queries, create larger combinations to maintain intent
+    num_additional_filters = len(additional_filters)
+    
+    if num_additional_filters == 0:
+        # No filters available: all size-2 (gender + location)
+        num_large_combos = 0
+        num_medium_combos = 0
+        filters_per_large = 0
+        filters_per_medium = 0
+    elif num_additional_filters <= 2:
+        # Small query: 3 size-3 combos, 2 size-2 combos
+        num_large_combos = 3
+        num_medium_combos = 2
+        filters_per_large = 1  # Add 1 filter
+        filters_per_medium = 0
+    else:
+        # Large query: 3 size-4/5 combos, 2 size-3 combos
+        num_large_combos = 3
+        num_medium_combos = 2
+        filters_per_large = min(2, num_additional_filters)  # Add 2-3 filters
+        filters_per_medium = 1  # Add 1 filter
+    
+    for idx, location in enumerate(PREDEFINED_LOCATIONS):
         combo = {"location": location}
         
         # Always include gender if available
         if gender:
             combo["gender"] = gender
         
-        # Calculate how many more filters we need
-        remaining_slots = size - len(combo)
-        
-        if remaining_slots > 0 and additional_filters:
-            # Randomly select additional filters
-            selected = random.sample(
-                additional_filters, 
-                min(remaining_slots, len(additional_filters))
-            )
+        # Determine how many filters to add based on position
+        if idx < num_large_combos and additional_filters:
+            # Large combinations: add multiple filters
+            num_to_add = filters_per_large
+            selected = random.sample(additional_filters, min(num_to_add, len(additional_filters)))
             for key, value in selected:
                 combo[key] = value
+        elif idx < (num_large_combos + num_medium_combos) and additional_filters:
+            # Medium combinations: add one filter
+            num_to_add = filters_per_medium
+            if num_to_add > 0:
+                selected = random.sample(additional_filters, min(num_to_add, len(additional_filters)))
+                for key, value in selected:
+                    combo[key] = value
+        # else: small combinations (just gender + location)
         
         combinations.append(combo)
     
@@ -144,18 +172,18 @@ def _create_location_based_combinations(
 
 
 async def _validate_combination(
-    filters: Dict[str, Any], 
-    user_id: str, 
+    filters: Dict[str, Any],
+    user_id: str,
     mcp_client
 ) -> Tuple[bool, int]:
     """
     Validate a filter combination by performing a test search.
-    
+
     Args:
         filters: Filter combination to validate
         user_id: User ID for the search
         mcp_client: MCP client instance to call search tool
-        
+
     Returns:
         Tuple of (has_results: bool, count: int)
     """
@@ -164,41 +192,64 @@ async def _validate_combination(
         test_args = filters.copy()
         test_args["user_id"] = user_id
         test_args["page"] = 1
-        
+
         # Call search with k=1 to check if results exist
-        result = await mcp_client.call_tool("search_profiles", {**test_args, "k": 1})
-        
-        # Parse the result
-        if isinstance(result, dict):
-            output = result.get("output")
-            if output:
-                # Handle different output formats
-                if hasattr(output, "structuredContent"):
-                    structured = output.structuredContent
-                elif hasattr(output, "content"):
-                    import json
-                    for item in output.content:
-                        if hasattr(item, "type") and item.type == "text":
-                            structured = json.loads(item.text)
-                            break
-                else:
-                    structured = output
-                
-                if isinstance(structured, dict):
-                    docs = structured.get("docs", [])
-                    count = len(docs)
-                    return count > 0, count
-        
-        return False, 0
-        
+        result = await mcp_client.call_tool(
+            "search_profiles",
+            {**test_args, "k": 1}
+        )
+
+        # ---- Validate top-level response ----
+        if not isinstance(result, dict) or not result.get("success"):
+            return False, 0
+
+        output = result.get("output")
+        if not output:
+            return False, 0
+
+        structured = None
+
+        # ---- 1️⃣ Preferred: structuredContent ----
+        if getattr(output, "structuredContent", None):
+            structured = output.structuredContent
+
+        # ---- 2️⃣ Fallback: content[text] containing JSON ----
+        elif getattr(output, "content", None):
+            for item in output.content:
+                if getattr(item, "type", None) == "text":
+                    try:
+                        structured = json.loads(item.text)
+                    except Exception:
+                        logger.exception(
+                            f"Failed to parse JSON tool output for filters {filters}"
+                        )
+                    break
+
+        # ---- 3️⃣ Fallback: already a dict ----
+        elif isinstance(output, dict):
+            structured = output
+
+        # ---- Final validation ----
+        if not isinstance(structured, dict):
+            return False, 0
+
+        docs = structured.get("docs", [])
+        count = structured.get("count", len(docs))
+
+        return count > 0, count
+
     except Exception as e:
-        logger.error(f"Error validating combination {filters}: {e}")
+        logger.exception(
+            f"Error validating combination {filters}: {e}"
+        )
         return False, 0
 
 
 def _generate_description(filters: Dict[str, Any]) -> str:
     """
     Generate a human-readable description for a filter combination.
+    Uses natural language with dynamic prefixes like 'with' and separators like 'and'.
+    Handles array values by extracting first element or joining multiple values.
     
     Args:
         filters: Filter combination
@@ -218,7 +269,7 @@ def _generate_description(filters: Dict[str, Any]) -> str:
     if "location" in filters:
         parts.append(f"in {filters['location']}")
     
-    # Add one or two notable appearance/lifestyle filters
+    # Collect notable appearance/lifestyle filters
     notable_filters = []
     for key, value in filters.items():
         if key in ["gender", "location", "user_id", "page"]:
@@ -231,15 +282,32 @@ def _generate_description(filters: Dict[str, Any]) -> str:
         if isinstance(value, dict):
             continue  # Skip complex filters
         
-        # Add to notable filters
-        readable_key = key.replace("_", " ")
-        notable_filters.append(f"{readable_key}: {value}")
+        # Handle array values
+        if isinstance(value, list):
+            if len(value) == 0:
+                continue  # Skip empty arrays
+            elif len(value) == 1:
+                value = value[0]  # Use single value
+            else:
+                value = " or ".join(str(v) for v in value)  # Join multiple values
         
-        if len(notable_filters) >= 2:
-            break
+        # Add to notable filters with natural phrasing
+        readable_key = key.replace("_", " ")
+        notable_filters.append(f"{readable_key} {value}")
     
+    # Add notable filters with natural language
     if notable_filters:
-        parts.append(f"({', '.join(notable_filters)})")
+        # Use dynamic prefixes for variety
+        prefixes = ["with", "having", "who have"]
+        prefix = random.choice(prefixes)
+        
+        # Join multiple filters with 'and'
+        if len(notable_filters) == 1:
+            parts.append(f"{prefix} {notable_filters[0]}")
+        else:
+            # Join all but last with commas, last with 'and'
+            filters_text = ", ".join(notable_filters[:-1]) + f" and {notable_filters[-1]}"
+            parts.append(f"{prefix} {filters_text}")
     
     return " ".join(parts)
 
@@ -287,7 +355,7 @@ async def generate_filter_suggestions(
         categorized, 
         combo_size
     )
-    
+    logger.info(f"Created {len(combinations)} initial combinations based on predefined locations")
     # Validate each combination and collect successful ones
     validated_suggestions = []
     
@@ -295,13 +363,13 @@ async def generate_filter_suggestions(
         has_results, count = await _validate_combination(combo, user_id, mcp_client)
         
         if has_results:
+            logger.info(f"Validated suggestion: {combo} ({count} results)")
             suggestion = {
                 "filters": combo,
                 "description": _generate_description(combo),
                 "result_count": count
             }
             validated_suggestions.append(suggestion)
-            logger.info(f"Validated suggestion: {suggestion['description']} ({count} results)")
         else:
             logger.debug(f"Skipping combination (no results): {combo}")
         

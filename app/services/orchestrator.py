@@ -16,7 +16,7 @@ from app.api.schemas import LLMRequest, SessionSummary, SessionType
 from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt, get_about_agent_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
+from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt, normalize_decision_tool
 from app.utils.filter_suggestions import generate_filter_suggestions
 from app.utils.cache_persona import cache_persona
 from app.services.eleven_labs_audio_gen_service import eleven_labs_audio_gen_service
@@ -215,8 +215,10 @@ class OrchestratorService:
                 else:
                     tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
 
-                decision = tool_required.get("decision") if tool_required else None
-                logger.info(f"Step 1 result: Desicion {decision}")
+                tool_required = normalize_decision_tool(tool_required)
+                decision = tool_required.get("decision", "no_tool")
+
+                logger.info(f"Step 1 result: Tool Required Decision - {decision} and type is {type(decision)}")
 
                 if not decision:
                     logger.warning("Tool decision missing from LLM response")
@@ -718,6 +720,7 @@ class OrchestratorService:
         voice_id = None
         language=""
         identity=None
+        filter_suggestions = None
         if personality_id:
             persona = await cache_persona.get_persona(user_id, personality_id)
             if persona:
@@ -786,7 +789,9 @@ class OrchestratorService:
         logger.info(f"Step 3 result: Summarize {resp}")
         if resp and resp.get("final_answer"):
             # Pass filter_suggestions if they were generated
-            suggestions_to_pass = filter_suggestions if 'filter_suggestions' in locals() else None
+            suggestions_to_pass = None
+            if filter_suggestions:
+                suggestions_to_pass = filter_suggestions 
             await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required, None, session_type, voice_id, selected_tool, suggestions_to_pass)
         else:
             await self._send_status(request_id, "NO_SUMMARY")
@@ -835,6 +840,7 @@ class OrchestratorService:
             "voice_clip": msg.get("audio_clip", ""),
             "error": error,
             "metadata": {"user_id": user_id},
+            "filter_suggestions": filter_suggestions if filter_suggestions else None,
             "timestamp": time.time()
         }
         asyncio.create_task(mongo_service.save_chat_log(user_id, log_data))
