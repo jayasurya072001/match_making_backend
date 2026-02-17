@@ -727,7 +727,7 @@ async def search_by_celebrity_lookalike(
                     "image_url": image_url,
                     "needs_confirmation": True
                 }],
-                "instruction": f"Display the image {image_url} to the user and ask: 'Is this {corrected_name}?'"
+                "instruction": f"You MUST include the following image URL in your response using markdown: ![{corrected_name}]({image_url}). Do NOT use placeholders. Display the image and ask: 'Is this {corrected_name}?'"
             }
 
         except Exception as e:

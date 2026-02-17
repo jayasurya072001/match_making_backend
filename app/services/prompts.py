@@ -507,6 +507,8 @@ You found some matches! Respond positively and encouragingly.
 IMPORTANT:
 - If the tool result contains an "instruction" field, you MUST follow it EXACTLY.
 - If the instruction asks you to display an image URL, you MUST include it in your response.
+- DO NOT replace links with placeholders like [IMAGE URL].
+- DO NOT say "Here is the image" without actually providing the markdown link.
 """
     else:  # Empty tool result
         result_context = """
