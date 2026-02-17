@@ -84,24 +84,64 @@ async def search_profiles(
     # Flattened Attributes
     min_age: int | None = None,
     max_age: int | None = None,
-    gender: Optional[Literal["male", "female"]] = None,
-    age_group: Optional[Literal["teen", "adult", "senior"]] = None,
-    ethnicity: Optional[Literal["white", "black", "asian", "brown"]] = None,
-    hair_color: Optional[Literal["black", "blonde", "white", "grey", "others"]] = None,
-    eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None,
-    face_shape: Optional[Literal["oval", "round", "square", "diamond"]] = None,
-    head_hair: Optional[Literal["present", "absent"]] = None,
-    beard: Optional[Literal["stubble", "full", "goatee"]] = None,
-    mustache: Optional[Literal["thin", "thick", "handlebar"]] = None,
-    hair_style: Optional[Literal["straight", "curly"]] = None,
-    emotion: Optional[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]] = None,
-    fore_head_height: Optional[Literal["low", "high"]] = None,
-    eyewear: Optional[Literal["prescription_glasses", "sunglasses"]] = None,
-    headwear: Optional[Literal["hat", "cap", "turban"]] = None,
-    eyebrow: Optional[Literal["present", "absent"]] = None,
-    
+    gender: Optional[
+        Union[Literal["male", "female"], List[Literal["male", "female"]]]
+    ] = None,
+    age_group: Optional[
+        Union[Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]]
+    ] = None,
+    ethnicity: Optional[
+        Union[Literal["white", "black", "asian", "brown"], List[Literal["white", "black", "asian", "brown"]]]
+    ] = None,
+    hair_color: Optional[
+        Union[
+            Literal["black", "blonde", "white", "grey", "others"],
+            List[Literal["black", "blonde", "white", "grey", "others"]]
+        ]
+    ] = None,
+    eye_color: Optional[
+        Union[Literal["blue", "green", "grey", "black"], List[Literal["blue", "green", "grey", "black"]]]
+    ] = None,
+    face_shape: Optional[
+        Union[Literal["oval", "round", "square", "diamond"], List[Literal["oval", "round", "square", "diamond"]]]
+    ] = None,
+    head_hair: Optional[
+        Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
+    ] = None,
+    beard: Optional[
+        Union[Literal["stubble", "full", "goatee"], List[Literal["stubble", "full", "goatee"]]]
+    ] = None,
+    mustache: Optional[
+        Union[Literal["thin", "thick", "handlebar"], List[Literal["thin", "thick", "handlebar"]]]
+    ] = None,
+    hair_style: Optional[
+        Union[Literal["straight", "curly"], List[Literal["straight", "curly"]]]
+    ] = None,
+    emotion: Optional[
+        Union[
+            Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
+            List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]]
+        ]
+    ] = None,
+    fore_head_height: Optional[
+        Union[Literal["low", "high"], List[Literal["low", "high"]]]
+    ] = None,
+    eyewear: Optional[
+        Union[
+            Literal["prescription_glasses", "sunglasses"],
+            List[Literal["prescription_glasses", "sunglasses"]]
+        ]
+    ] = None,
+    headwear: Optional[
+        Union[Literal["hat", "cap", "turban"], List[Literal["hat", "cap", "turban"]]]
+    ] = None,
+    eyebrow: Optional[
+        Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
+    ] = None,
     # New Fields
-    mole: Optional[Literal["Normal", "Unibrow"]] = None, 
+    mole: Optional[
+        Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
+    ] = None,
     scars: Optional[str] = None,
     earrings: Optional[str] = None,
 
@@ -112,19 +152,30 @@ async def search_profiles(
             List[Literal["casual", "western", "traditional", "formal"]]
         ]
     ] = None,
-    body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None, 
-    lip_stick: Optional[Literal["no", "yes", "none"]] = None, 
-    skin_color: Optional[Literal["white", "black", "none", "brown"]] = None,
+    body_shape: Optional[
+    Union[Literal["fit", "slim", "fat", "none"], List[Literal["fit", "slim", "fat", "none"]]]
+    ] = None,
+    lip_stick: Optional[
+        Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
+    ] = None,
+    skin_color: Optional[
+        Union[Literal["white", "black", "none", "brown"], List[Literal["white", "black", "none", "brown"]]]
+    ] = None,
     eye_size: Optional[
         Union[
             Literal["normal", "large", "small", "None"],
             List[Literal["normal", "large", "small", "None"]]
         ]
     ] = None,
-    face_size: Optional[Literal["large", "medium", "small"]] = None, 
-    face_structure: Optional[Literal["symmetric", "asymmetric"]] = None, 
-    hair_length: Optional[Literal["long", "medium", "short"]] = None,
-
+    face_size: Optional[
+        Union[Literal["large", "medium", "small"], List[Literal["large", "medium", "small"]]]
+    ] = None,
+    face_structure: Optional[
+        Union[Literal["symmetric", "asymmetric"], List[Literal["symmetric", "asymmetric"]]]
+    ] = None,
+    hair_length: Optional[
+        Union[Literal["long", "medium", "short"], List[Literal["long", "medium", "short"]]]
+    ] = None,
     # Numeric Ranges
     min_height: Optional[float] = None,
     max_height: Optional[float] = None,
@@ -134,23 +185,68 @@ async def search_profiles(
     max_annual_income: Optional[int] = None,
 
     # Categorical
-    diet: Optional[Literal["veg", "nonveg", "egg", "jain"]] = None, 
-    drinking: Optional[Literal["yes", "no"]] = None, 
-    smoking: Optional[Literal["yes", "no"]] = None, 
-    family_type: Optional[Literal["nuclear", "joint"]] = None, 
-    family_values: Optional[Literal["traditional", "moderate", "liberal"]] = None, 
-    father_occupation: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
-    mother_occupation: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
-    highest_qualification: Optional[Literal["phd", "graduate", "post graduate", "diploma"]] = None, 
-    marital_status: Optional[Literal["single"]] = None, 
-    mother_tongue: Optional[Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"]] = None, 
-    profession: Optional[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]] = None, 
-    religion: Optional[Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"]] = None, 
-    
+        
+    diet: Optional[
+        Union[Literal["veg", "nonveg", "egg", "jain"], List[Literal["veg", "nonveg", "egg", "jain"]]]
+    ] = None,
+    drinking: Optional[
+        Union[Literal["yes", "no"], List[Literal["yes", "no"]]]
+    ] = None,
+    smoking: Optional[
+        Union[Literal["yes", "no"], List[Literal["yes", "no"]]]
+    ] = None,
+    family_type: Optional[
+        Union[Literal["nuclear", "joint"], List[Literal["nuclear", "joint"]]]
+    ] = None,
+    family_values: Optional[
+        Union[
+            Literal["traditional", "moderate", "liberal"],
+            List[Literal["traditional", "moderate", "liberal"]]
+        ]
+    ] = None,
+    father_occupation: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]]
+        ]
+    ] = None,
+    mother_occupation: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]]
+        ]
+    ] = None,
+    highest_qualification: Optional[
+        Union[
+            Literal["phd", "graduate", "post graduate", "diploma"],
+            List[Literal["phd", "graduate", "post graduate", "diploma"]]
+        ]
+    ] = None,
+    marital_status: Optional[
+        Union[Literal["single"], List[Literal["single"]]]
+    ] = None,
+    mother_tongue: Optional[
+        Union[
+            Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"],
+            List[Literal["tamil", "telugu", "kannada", "malayalam", "marathi", "english", "hindi"]]
+        ]
+    ] = None,
+    profession: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]]
+        ]
+    ] = None,
+    religion: Optional[
+        Union[
+            Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"],
+            List[Literal["hindu", "muslim", "christian", "sikh", "jain", "buddhist", "jewish", "parsi", "no religion"]]
+        ]
+    ] = None,
     # Simple strings/lists but typed as str for MCP simplicity (comma-sep)
     # The prompt actually lists specific options for speaking_languages too but as a list example.
-    speaking_languages: Optional[str] = None, 
-    tags: Optional[str] = None # comma separated tags
+    speaking_languages: Optional[Union[Literal["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "marathi", "gujarati", "punjabi", "kashmiri"], List[Literal["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "marathi", "gujarati", "punjabi", "kashmiri"]]]] = None,
+    tags: Optional[Union[Literal["party_lover", "nature_lover", "extrovert", "introvert", "explorer", "adventurer", "outdoor_lover", "influencer", "food_lover", "music_lover", "traveler", "gamer", "traditional"], List[Literal["party_lover", "nature_lover", "extrovert", "introvert", "explorer", "adventurer", "outdoor_lover", "influencer", "food_lover", "music_lover", "traveler", "gamer", "traditional"]]]] = None
 
 
 ) -> Any:
@@ -199,9 +295,6 @@ async def search_profiles(
     income_range = normalize_range(
         min_annual_income, max_annual_income, 0, 1000, int
     )
-
-    # Convert tags string to list if present
-    tags_list = [t.strip() for t in tags.split(',')] if tags else None
     
     # Convert speaking_languages to list if present and comma-sep
     # Check if speaking_languages is intended as single or list? 
@@ -259,7 +352,7 @@ async def search_profiles(
         "profession": profession,
         "religion": religion,
         "speaking_languages": speaking_languages,
-        "tags": tags_list
+        "tags": tags
 
 
     }
@@ -372,16 +465,18 @@ def load_recommendations():
 
 @mcp.tool()
 async def get_profile_recommendations(
-    query: str,
+    query: Optional[Union[Literal["traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", "graceful", "attractive", "soft_spoken", "royal", "grounded"], List[Literal["traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", "graceful", "attractive", "soft_spoken", "royal", "grounded"]]]] = None,
     gender: Optional[Literal["male", "female"]] = None
 ) -> Any:
     """
     Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
-
-    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types") 
-    and specific search attributes. It returns curated 'visual archetypes' that the user can select 
+ 
+    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types")
+    and specific search attributes. It returns curated 'visual archetypes' that the user can select
     to trigger a specific search.
-
+ 
+    Map the user's request to the closest archetype. Dont create new archetypes. Use existing archetypes.
+ 
     USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
     1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
        - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
@@ -392,57 +487,27 @@ async def get_profile_recommendations(
     2. APPEARANCE DESCRIPTORS (Maps to 'Cute', 'Beautiful'):
        - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
        - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
-
+ 
     DO NOT USE THIS TOOL IF:
-    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". 
+    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai".
       In that case, use `search_profiles` directly.
     - The user asks for a specific person by name.
+ 
+    IMPORTANT AND MANDATORY:
+        If the user query contains any of the following personality or lifestyle tags:
 
-    Returns:
-    - A list of visual cards (archetypes) containing an image_url and a set of predefined attributes 
-      corresponding to that style.
+        Party Lover, Nature Lover, Extrovert, Introvert, Explorer, Adventurer, Outdoor Lover, Influencer, Food Lover, Music Lover, Traveler, Gamer, Traditional
+
+        Then you MUST call the tool: search_profiles.
     """
-    query = query.lower()
+    target_styles = []
+    target_styles.append(query)
     
     # Load recommendations data dynamically
     RECOMMENDATIONS = load_recommendations()
     
     recommendations = []
-    
-    # Simple keyword matching
-    target_styles = []
-    
-    # 1. Homely / Simple
-    if any(k in query for k in ["homely", "simple", "family", "down to earth", "traditional"]):
-        target_styles.append("homely")
-        # Traditional is often synonymous with homely in this context, but we can keep them distinct if needed.
-        # If user explicitly asks for "traditional", we can add both.
-        if "traditional" in query:
-             target_styles.append("traditional")
-    
-    # 2. Professional / Corporate
-    if any(k in query for k in ["professional", "corporate", "working", "job", "career", "educated", "office"]):
-        target_styles.append("professional")
 
-    # 3. Modern / Stylish / Trendy
-    if any(k in query for k in ["modern", "stylish", "trendy", "fashion", "western", "cool"]):
-        target_styles.append("modern")
-
-    # 4. Cute
-    if "cute" in query or "bubbly" in query or "chocolate" in query:
-        target_styles.append("cute")
-        
-    # 5. Beautiful / Handsome
-    if any(k in query for k in ["beautiful", "handsome", "good looking", "pretty", "attractive", "radiant", "dashing"]):
-        target_styles.append("beautiful")
-        
-    # Determine gender from query if not provided
-    if not gender:
-        if any(k in query for k in ["girl", "woman", "female", "lady", "bride", "wife", "partner"]):
-            gender = "female"
-        elif any(k in query for k in ["boy", "man", "male", "guy", "groom", "husband"]):
-            gender = "male"
-            
     # Collect recommendations
     for style in target_styles:
         if style in RECOMMENDATIONS:
@@ -468,10 +533,21 @@ async def get_profile_recommendations(
         }
         
     return {
-        "message": f"Here are some visual styles based on '{query}':",
         "recommendation": True,
         "docs": recommendations,
-        "instruction": "Select a profile to continue search with these visual attributes."
+        "instruction": """You are a Recommendation Agent.
+                    Your task is to present predefined profiles to the user and ask them to choose which one matches their type.
+                    Rules:
+                    Only use the profiles provided to you.
+                    Do not create new profiles.
+                    Keep descriptions short (2–3 lines each).
+                    After listing them, ask the user to choose.
+                    After listing them, clearly tell the user they must choose
+                    Do not be overly descriptive or explicit.
+                    Keep it funny.
+                    Keep the tone friendly and casual."
+                    EXAMPLE: Hey who looks cute for you? choose among these matches.
+                     """
     }
 
 @mcp.tool()

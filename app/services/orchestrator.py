@@ -16,7 +16,8 @@ from app.api.schemas import LLMRequest, SessionSummary, SessionType
 from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt, get_about_agent_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt
+from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt, normalize_decision_tool
+from app.utils.filter_suggestions import generate_filter_suggestions
 from app.utils.cache_persona import cache_persona
 from app.services.eleven_labs_audio_gen_service import eleven_labs_audio_gen_service
 from app.services.blob_storage_uploader_service import blob_storage_uploader_service
@@ -123,9 +124,10 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None) -> str:
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None, selected_filters: Optional[dict] = None):
         """
-        Public API: Spawns the orchestration task.
+        Public entry point: Accepts a user query and returns a request_id.
+        If selected_filters is provided, bypasses LLM steps and directly executes search.
         """
         request_id = f"REQCHAT-{generate_random_id(user_id)}"
         
@@ -137,15 +139,17 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type, recommendation_ids))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type, recommendation_ids, selected_filters))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None, selected_filters: Optional[dict] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
         selected_tool = ""
+        tool_required = None # Initialize tool_required
+        decision = None # Initialize decision
         try:
             logger.info(f"Orchestration started for {request_id} and user {user_id} and session {session_id}")
             await self._send_status(request_id, "RECEIVED")
@@ -182,57 +186,74 @@ class OrchestratorService:
 
             
             
-            # Inject recommendations if present
+            # Inject recommendation details if provided
             if recommendation_ids:
-                rec_details = self._get_recommendation_details(recommendation_ids)
-                if rec_details:
-                    logger.info(f"Injecting recommendations into query: {recommendation_ids} and detail {rec_details}")
-                    query = rec_details
+                query = self._get_recommendation_details(recommendation_ids) + query
 
-            # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
-            if recommendation_ids:
-                logger.info("Forcing tool decision due to recommendation_ids")
+            # Check if selected_filters is provided (API bypass)
+            if selected_filters:
+                logger.info(f"Selected filters provided, bypassing LLM steps: {selected_filters}")
+                # Force tool execution with selected filters
+                selected_tool = "search_profiles"
                 tool_required = {"decision": "tool"}
-            else:
-                tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
-
-            decision = tool_required.get("decision") if tool_required else None
-            logger.info(f"Step 1 result: Desicion {decision}")
-
-            if not decision:
-                logger.warning("Tool decision missing from LLM response")
-
-            elif decision == "tool":
-                # 3. New Step 2: Select Tool
-                selected_tool = await self._step_select_required_tool(
+                decision = "tool"
+                
+                # Execute tool directly with selected filters
+                tool_result_str, tool_args, structured_result = await self._step_tool_execution_direct(
                     request_id,
                     user_id,
-                    query,
-                    history,
-                    session,
+                    selected_filters,
+                    selected_tool,
                     session_id
                 )
-                logger.info(f"Step 2 result: Selected Tool {selected_tool}")
+            else:
+                # Normal flow: LLM-driven
+                # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
+                if recommendation_ids:
+                    logger.info("Forcing tool decision due to recommendation_ids")
+                    tool_required = {"decision": "tool"}
+                else:
+                    tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
 
-                if selected_tool:
-                    # 4. Refactored Step 3: Tool Execution (Argument Extraction + Call)
-                    tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                tool_required = normalize_decision_tool(tool_required)
+                decision = tool_required.get("decision", "no_tool")
+
+                logger.info(f"Step 1 result: Tool Required Decision - {decision} and type is {type(decision)}")
+
+                if not decision:
+                    logger.warning("Tool decision missing from LLM response")
+
+                elif decision == "tool":
+                    # 3. New Step 2: Select Tool
+                    selected_tool = await self._step_select_required_tool(
                         request_id,
                         user_id,
                         query,
                         history,
                         session,
-                        selected_tool,
                         session_id
                     )
-                else:
-                    logger.warning("No tool selected in Step 2, skipping execution")
-            
-            elif decision in ("no_tool", "ask_clarification", "inappropriate_block", "gibberish", "about_agent"):
-                logger.info(f"Decision={decision}, skipping tool execution")
+                    logger.info(f"Step 2 result: Selected Tool {selected_tool}")
 
-            else:
-                logger.warning(f"Invalid tool decision received: {decision}")
+                    if selected_tool:
+                        # 4. Refactored Step 3: Tool Execution (Argument Extraction + Call)
+                        tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                            request_id,
+                            user_id,
+                            query,
+                            history,
+                            session,
+                            selected_tool,
+                            session_id
+                        )
+                    else:
+                        logger.warning("No tool selected in Step 2, skipping execution")
+                
+                elif decision in ("no_tool", "ask_clarification", "inappropriate_block", "gibberish", "about_agent"):
+                    logger.info(f"Decision={decision}, skipping tool execution")
+
+                else:
+                    logger.warning(f"Invalid tool decision received: {decision}")
 
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
@@ -476,7 +497,19 @@ class OrchestratorService:
             logger.info(
                 f"Tool {selected_tool} returned 0 results. Auto-resetting state."
             )
+            # Preserve gender if present, as it's the most important filter
+            gender_value = None
+            if selected_tool in full_state:
+                gender_value = full_state[selected_tool].get("gender")
+            
+            # Remove the tool state
             full_state.pop(selected_tool, None)
+            
+            # Restore gender if it existed
+            if gender_value:
+                full_state[selected_tool] = {"gender": gender_value}
+                logger.info(f"Preserved gender filter: {gender_value}")
+            
             await redis_service.save_tool_state(user_id, full_state, session_id)
             return structured_result
 
@@ -622,6 +655,56 @@ class OrchestratorService:
             logger.info(f"No tool received from the model due to some reason debug using this {resp}")
         return tool_result_str, final_tool_args, structured_result
 
+    async def _step_tool_execution_direct(self, request_id: str, user_id: str, selected_filters: dict, selected_tool: str, session_id: Optional[str] = None):
+        """
+        Direct tool execution with pre-selected filters (bypass LLM).
+        Used when user clicks a filter suggestion.
+        """
+        tool_result_str = None
+        structured_result = None
+        
+        try:
+            tool_list = self._mcp_client.get_sections("tools")
+            
+            # Prepare and validate tool args
+            final_tool_args = await self._prepare_and_validate_tool_args(
+                user_id, session_id, selected_tool, selected_filters, tool_list
+            )
+            
+            logger.info(f"Executing tool {selected_tool} with selected filters {final_tool_args}")
+            await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
+            
+            # Execute tool
+            res_mcp = await self._mcp_client.call_tool(selected_tool, final_tool_args)
+            structured_result = self._parse_mcp_output(res_mcp)
+            
+            # Handle pagination and auto-reset
+            structured_result = await self._handle_auto_reset_and_pagination(
+                structured_result,
+                selected_tool,
+                user_id,
+                session_id,
+                final_tool_args
+            )
+            
+            tool_result_str = json.dumps(structured_result, default=str)
+            logger.info(f"Direct tool execution completed for {selected_tool}")
+            
+            # Save to history
+            await self.append_history(
+                user_id,
+                {"role": "tool", "name": selected_tool, "args": final_tool_args},
+                session_id
+            )
+            await self._send_status(request_id, "TOOL_EXECUTED")
+            
+        except Exception as e:
+            logger.exception(f"Error in direct tool execution: {e}")
+            tool_result_str = f"Error: {str(e)}"
+            await self._send_status(request_id, "TOOL_ERROR", {"error": str(e)})
+        
+        return tool_result_str, selected_filters, structured_result
+
         
 
     async def _step_summarize(self, request_id: str, user_id: str, query: str, history: List[Dict], session_summary: Any, tool_result_str: Optional[str], tool_args: Any, structured_result: Any, session_id: Optional[str] = None, tool_required: bool = False, decision: Optional[str] = None, user_profile: Optional[Dict] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, selected_tool: Optional[str] = None):
@@ -637,6 +720,7 @@ class OrchestratorService:
         voice_id = None
         language=""
         identity=None
+        filter_suggestions = None
         if personality_id:
             persona = await cache_persona.get_persona(user_id, personality_id)
             if persona:
@@ -654,6 +738,19 @@ class OrchestratorService:
                 is_tool_result_check = len(structured_result.get("docs", [])) > 0
             else:
                 is_tool_result_check = False
+            
+            # Generate filter suggestions if no results found
+            filter_suggestions = None
+            if not is_tool_result_check and tool_args and selected_tool == "search_profiles":
+                try:
+                    logger.info("No results found, generating filter suggestions")
+                    filter_suggestions = await generate_filter_suggestions(
+                        tool_args, user_id, self._mcp_client, max_suggestions=5
+                    )
+                    logger.info(f"Generated {len(filter_suggestions)} suggestions")
+                except Exception as e:
+                    logger.error(f"Error generating filter suggestions: {e}")
+            
             default_prompt = get_tool_summary_prompt(formatted_history, is_tool_result_check, tool_result_str, personality, session_summary, user_profile)
         elif decision == 'inappropriate_block':
             default_prompt = get_inappropriate_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
@@ -691,12 +788,16 @@ class OrchestratorService:
         
         logger.info(f"Step 3 result: Summarize {resp}")
         if resp and resp.get("final_answer"):
-            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required, None, session_type, voice_id, selected_tool)
+            # Pass filter_suggestions if they were generated
+            suggestions_to_pass = None
+            if filter_suggestions:
+                suggestions_to_pass = filter_suggestions 
+            await self._complete_request(user_id, request_id, resp.get("final_answer"), structured_result, tool_args, session_id, query, tool_required, None, session_type, voice_id, selected_tool, suggestions_to_pass)
         else:
             await self._send_status(request_id, "NO_SUMMARY")
             await self._handle_error_response(request_id, user_id, session_id, query, "No Summary Generated")
 
-    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None, session_type: Optional[str] = None, voice_id: Optional[str] = None, selected_tool: Optional[str] = None):
+    async def _complete_request(self, user_id: str, request_id: str, answer: str, structured, tool_args=None, session_id: Optional[str] = None, query: str = None, tool_required: bool = False, error: Optional[str] = None, session_type: Optional[str] = None, voice_id: Optional[str] = None, selected_tool: Optional[str] = None, filter_suggestions: Optional[List[dict]] = None):
         # Save to history
         await self.append_history(user_id, {"role": "assistant", "content": answer}, session_id)
         # Publish final event (mimic what SSE expects for closure)
@@ -709,6 +810,10 @@ class OrchestratorService:
             "tool_result": structured,
             "source": "orchestrator"
         }
+        
+        # Include filter suggestions if available
+        if filter_suggestions:
+            msg["filter_suggestions"] = filter_suggestions
         await redis_service.publish(f"chat_status:{request_id}", msg)
         logger.info(f"Completed request {request_id}")
         if session_type == "2":
@@ -735,6 +840,7 @@ class OrchestratorService:
             "voice_clip": msg.get("audio_clip", ""),
             "error": error,
             "metadata": {"user_id": user_id},
+            "filter_suggestions": filter_suggestions if filter_suggestions else None,
             "timestamp": time.time()
         }
         asyncio.create_task(mongo_service.save_chat_log(user_id, log_data))

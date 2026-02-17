@@ -80,10 +80,24 @@ tools_specific_promtps = {
     """,
     "get_profile_recommendations": """
         EXTRACTION RULES
-        1. Extract the main descriptive or style keywords into `query` (e.g., "traditional", "simple", "corporate", "cute").
-        2. Detect `gender` from context (e.g. "girl"/"woman" -> "female", "boy"/"man" -> "male").
-        3. Do not include unrelated words in `query`.
-        4. Output {{"query": "...", "gender": "..."}} (gender is optional).
+                EXTRACTION RULES
+        1. From the user message, identify ONLY ONE matching descriptive/style keyword from the following fixed list:
+            ["traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", "graceful", "attractive", "soft_spoken", "royal", "grounded"]
+        2. IMPORTANT:
+            - Return ONLY ONE keyword.
+            - The value MUST be exactly one of the above keys.
+            - Do NOT generate synonyms, variations, or multiple values.
+            - If multiple styles appear, choose the SINGLE most dominant one.
+            - If none match clearly, return null for `query`.
+        3. Detect `gender` from context:
+            - "girl", "woman", "female" -> "female"
+            - "boy", "man", "male" -> "male"
+        4. Do NOT include unrelated words.
+        5. Output STRICT JSON only:
+            {
+            "query": "<ONE_ALLOWED_KEY_OR_NULL>",
+            "gender": "<male|female>"
+            }
     """,
     "cross_location_visual_search": """
         EXTRACTION RULES:
@@ -256,3 +270,19 @@ def persona_json_to_system_prompt(persona: dict) -> str:
         lines.append(f"EXPERT LEVEL: {persona['expert_level']}")
 
     return "\n".join(lines)
+
+
+def normalize_decision_tool(value):
+    if isinstance(value, str):
+        value = value.strip()
+
+        # remove accidental JSON quotes
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+
+        return {"decision": value}
+
+    if isinstance(value, dict):
+        return value
+
+    return {"decision": "no_tool"}
