@@ -195,11 +195,14 @@ tools_specific_promtps = {
             - Retain `gender` from context.
             - CRITICAL: DO NOT return placeholders like "<URL_FROM...>" or "URL". You must find the actual https link.
             - IF NO URL IS FOUND IN THE PREVIOUS ASSISTANT MESSAGE -> Return null for `confirmed_image_url`.
-        4. OUTPUT JSON:
+        4. HANDLING NEW SEARCH ("I want someone like...", "Show me..."):
+            - If the user is asking for a different celebrity or starting a new search:
+            - Set `confirmed_image_url` to `null` (Must be explicit null to clear previous state).
+        5. OUTPUT JSON:
             {
                 "celebrity_name": "Name",
                 "gender": "male" | "female",
-                "confirmed_image_url": "https://..." (only if found in history)
+                "confirmed_image_url": "https://..." | null
             }
     """
 }
