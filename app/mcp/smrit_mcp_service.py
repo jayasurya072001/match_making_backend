@@ -721,10 +721,12 @@ async def search_by_celebrity_lookalike(
             # Return image for user confirmation
             return {
                 "message": f"I found matches for {corrected_name}. Is this the person you are looking for?",
-                "is_celebrity": True,
-                "correct_name": corrected_name,
-                "image_url": image_url,
-                "needs_confirmation": True,
+                "docs": [{
+                    "is_celebrity": True,
+                    "correct_name": corrected_name,
+                    "image_url": image_url,
+                    "needs_confirmation": True
+                }],
                 "instruction": f"Display the image {image_url} to the user and ask: 'Is this {corrected_name}?'"
             }
 
