@@ -32,7 +32,8 @@ async def chat_request(
         body.personality_id, 
         body.session_type, 
         body.recommendation_ids,
-        body.selected_filters
+        body.selected_filters,
+        body.image_url
     )
     
     response = {"status": "accepted", "request_id": request_id}
