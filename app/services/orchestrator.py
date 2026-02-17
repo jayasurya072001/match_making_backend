@@ -212,7 +212,7 @@ class OrchestratorService:
                 if image_url:
                     logger.info("Forcing tool decision due to image_url")
                     tool_required = {"decision": "tool"}
-                    selected_tool = "upload_image"
+                    selected_tool = "search_profiles"
                     decision = "tool"
                 elif recommendation_ids:
                     logger.info("Forcing tool decision due to recommendation_ids")
@@ -630,7 +630,7 @@ class OrchestratorService:
         if isinstance(tool_args, str):
             tool_args = json.loads(tool_args)
 
-        if image_url and selected_tool == "upload_image":
+        if image_url and selected_tool == "search_profiles":
             logger.info(f"Injecting image_url into tool args: {image_url}")
             tool_args["image_url"] = image_url
         
