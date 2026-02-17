@@ -444,6 +444,387 @@ async def search_person_by_name(
         return f"Error: {str(e)}"
 
 
+@mcp.tool()
+async def upload_image(
+    user_id: str,
+    image_url: str,
+    name: str | None = None,
+    location: str | None = None,
+    distance: int | None = 10,
+    page: int | None = 1,
+    # Flattened Attributes
+    min_age: int | None = None,
+    max_age: int | None = None,
+    gender: Optional[
+        Union[Literal["male", "female"], List[Literal["male", "female"]]]
+    ] = None,
+    age_group: Optional[
+        Union[
+            Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]
+        ]
+    ] = None,
+    ethnicity: Optional[
+        Union[
+            Literal["white", "black", "asian", "brown"],
+            List[Literal["white", "black", "asian", "brown"]],
+        ]
+    ] = None,
+    hair_color: Optional[
+        Union[
+            Literal["black", "blonde", "white", "grey", "others"],
+            List[Literal["black", "blonde", "white", "grey", "others"]],
+        ]
+    ] = None,
+    eye_color: Optional[
+        Union[
+            Literal["blue", "green", "grey", "black"],
+            List[Literal["blue", "green", "grey", "black"]],
+        ]
+    ] = None,
+    face_shape: Optional[
+        Union[
+            Literal["oval", "round", "square", "diamond"],
+            List[Literal["oval", "round", "square", "diamond"]],
+        ]
+    ] = None,
+    head_hair: Optional[
+        Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
+    ] = None,
+    beard: Optional[
+        Union[
+            Literal["stubble", "full", "goatee"],
+            List[Literal["stubble", "full", "goatee"]],
+        ]
+    ] = None,
+    mustache: Optional[
+        Union[
+            Literal["thin", "thick", "handlebar"],
+            List[Literal["thin", "thick", "handlebar"]],
+        ]
+    ] = None,
+    hair_style: Optional[
+        Union[Literal["straight", "curly"], List[Literal["straight", "curly"]]]
+    ] = None,
+    emotion: Optional[
+        Union[
+            Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
+            List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]],
+        ]
+    ] = None,
+    fore_head_height: Optional[
+        Union[Literal["low", "high"], List[Literal["low", "high"]]]
+    ] = None,
+    eyewear: Optional[
+        Union[
+            Literal["prescription_glasses", "sunglasses"],
+            List[Literal["prescription_glasses", "sunglasses"]],
+        ]
+    ] = None,
+    headwear: Optional[
+        Union[Literal["hat", "cap", "turban"], List[Literal["hat", "cap", "turban"]]]
+    ] = None,
+    eyebrow: Optional[
+        Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
+    ] = None,
+    # New Fields
+    mole: Optional[
+        Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
+    ] = None,
+    scars: Optional[str] = None,
+    earrings: Optional[str] = None,
+    # attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None,
+    attire: Optional[
+        Union[
+            Literal["casual", "western", "traditional", "formal"],
+            List[Literal["casual", "western", "traditional", "formal"]],
+        ]
+    ] = None,
+    body_shape: Optional[
+        Union[
+            Literal["fit", "slim", "fat", "none"],
+            List[Literal["fit", "slim", "fat", "none"]],
+        ]
+    ] = None,
+    lip_stick: Optional[
+        Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
+    ] = None,
+    skin_color: Optional[
+        Union[
+            Literal["white", "black", "none", "brown"],
+            List[Literal["white", "black", "none", "brown"]],
+        ]
+    ] = None,
+    eye_size: Optional[
+        Union[
+            Literal["normal", "large", "small", "None"],
+            List[Literal["normal", "large", "small", "None"]],
+        ]
+    ] = None,
+    face_size: Optional[
+        Union[
+            Literal["large", "medium", "small"], List[Literal["large", "medium", "small"]]
+        ]
+    ] = None,
+    face_structure: Optional[
+        Union[
+            Literal["symmetric", "asymmetric"], List[Literal["symmetric", "asymmetric"]]
+        ]
+    ] = None,
+    hair_length: Optional[
+        Union[
+            Literal["long", "medium", "short"], List[Literal["long", "medium", "short"]]
+        ]
+    ] = None,
+    # Numeric Ranges
+    min_height: Optional[float] = None,
+    max_height: Optional[float] = None,
+    min_weight: Optional[int] = None,
+    max_weight: Optional[int] = None,
+    min_annual_income: Optional[int] = None,
+    max_annual_income: Optional[int] = None,
+    # Categorical
+    diet: Optional[
+        Union[
+            Literal["veg", "nonveg", "egg", "jain"],
+            List[Literal["veg", "nonveg", "egg", "jain"]],
+        ]
+    ] = None,
+    drinking: Optional[Union[Literal["yes", "no"], List[Literal["yes", "no"]]]] = None,
+    smoking: Optional[Union[Literal["yes", "no"], List[Literal["yes", "no"]]]] = None,
+    family_type: Optional[
+        Union[Literal["nuclear", "joint"], List[Literal["nuclear", "joint"]]]
+    ] = None,
+    family_values: Optional[
+        Union[
+            Literal["traditional", "moderate", "liberal"],
+            List[Literal["traditional", "moderate", "liberal"]],
+        ]
+    ] = None,
+    father_occupation: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[
+                Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]
+            ],
+        ]
+    ] = None,
+    mother_occupation: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[
+                Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]
+            ],
+        ]
+    ] = None,
+    highest_qualification: Optional[
+        Union[
+            Literal["phd", "graduate", "post graduate", "diploma"],
+            List[Literal["phd", "graduate", "post graduate", "diploma"]],
+        ]
+    ] = None,
+    marital_status: Optional[
+        Union[Literal["single"], List[Literal["single"]]]
+    ] = None,
+    mother_tongue: Optional[
+        Union[
+            Literal[
+                "tamil",
+                "telugu",
+                "kannada",
+                "malayalam",
+                "marathi",
+                "english",
+                "hindi",
+            ],
+            List[
+                Literal[
+                    "tamil",
+                    "telugu",
+                    "kannada",
+                    "malayalam",
+                    "marathi",
+                    "english",
+                    "hindi",
+                ]
+            ],
+        ]
+    ] = None,
+    profession: Optional[
+        Union[
+            Literal["doctor", "engineer", "finance", "tech", "teacher", "others"],
+            List[
+                Literal["doctor", "engineer", "finance", "tech", "teacher", "others"]
+            ],
+        ]
+    ] = None,
+    religion: Optional[
+        Union[
+            Literal[
+                "hindu",
+                "muslim",
+                "christian",
+                "sikh",
+                "jain",
+                "buddhist",
+                "jewish",
+                "parsi",
+                "no religion",
+            ],
+            List[
+                Literal[
+                    "hindu",
+                    "muslim",
+                    "christian",
+                    "sikh",
+                    "jain",
+                    "buddhist",
+                    "jewish",
+                    "parsi",
+                    "no religion",
+                ]
+            ],
+        ]
+    ] = None,
+    # Simple strings/lists but typed as str for MCP simplicity (comma-sep)
+    # The prompt actually lists specific options for speaking_languages too but as a list example.
+    speaking_languages: Optional[
+        Union[
+            Literal[
+                "english",
+                "hindi",
+                "tamil",
+                "telugu",
+                "kannada",
+                "malayalam",
+                "marathi",
+                "gujarati",
+                "punjabi",
+                "kashmiri",
+            ],
+            List[
+                Literal[
+                    "english",
+                    "hindi",
+                    "tamil",
+                    "telugu",
+                    "kannada",
+                    "malayalam",
+                    "marathi",
+                    "gujarati",
+                    "punjabi",
+                    "kashmiri",
+                ]
+            ],
+        ]
+    ] = None,
+    tags: Optional[
+        Union[
+            Literal[
+                "party_lover",
+                "nature_lover",
+                "extrovert",
+                "introvert",
+                "explorer",
+                "adventurer",
+                "outdoor_lover",
+                "influencer",
+                "food_lover",
+                "music_lover",
+                "traveler",
+                "gamer",
+                "traditional",
+            ],
+            List[
+                Literal[
+                    "party_lover",
+                    "nature_lover",
+                    "extrovert",
+                    "introvert",
+                    "explorer",
+                    "adventurer",
+                    "outdoor_lover",
+                    "influencer",
+                    "food_lover",
+                    "music_lover",
+                    "traveler",
+                    "gamer",
+                    "traditional",
+                ]
+            ],
+        ]
+    ] = None,
+) -> Any:
+    """
+    Search and filter people profiles using an uploaded image to find similar looking people.
+    
+    Use this tool when the user provides an image or image URL and wants to find people who look similar.
+    Optionally, other filters can be applied to narrow down the search.
+
+    Behavior:
+    - Matches are based on facial similarity to the provided image.
+    - Other filters are applied on top of the visual search.
+    
+    """
+    
+    # Reuse the logic of search_profiles, but ensure image_url is passed
+    return await search_profiles(
+        user_id=user_id,
+        name=name,
+        image_url=image_url,
+        location=location,
+        distance=distance,
+        page=page,
+        min_age=min_age,
+        max_age=max_age,
+        gender=gender,
+        age_group=age_group,
+        ethnicity=ethnicity,
+        hair_color=hair_color,
+        eye_color=eye_color,
+        face_shape=face_shape,
+        head_hair=head_hair,
+        beard=beard,
+        mustache=mustache,
+        hair_style=hair_style,
+        emotion=emotion,
+        fore_head_height=fore_head_height,
+        eyewear=eyewear,
+        headwear=headwear,
+        eyebrow=eyebrow,
+        mole=mole,
+        scars=scars,
+        earrings=earrings,
+        attire=attire,
+        body_shape=body_shape,
+        lip_stick=lip_stick,
+        skin_color=skin_color,
+        eye_size=eye_size,
+        face_size=face_size,
+        face_structure=face_structure,
+        hair_length=hair_length,
+        min_height=min_height,
+        max_height=max_height,
+        min_weight=min_weight,
+        max_weight=max_weight,
+        min_annual_income=min_annual_income,
+        max_annual_income=max_annual_income,
+        diet=diet,
+        drinking=drinking,
+        smoking=smoking,
+        family_type=family_type,
+        family_values=family_values,
+        father_occupation=father_occupation,
+        mother_occupation=mother_occupation,
+        highest_qualification=highest_qualification,
+        marital_status=marital_status,
+        mother_tongue=mother_tongue,
+        profession=profession,
+        religion=religion,
+        speaking_languages=speaking_languages,
+        tags=tags
+    )
+
+
 
 
 def load_recommendations():
