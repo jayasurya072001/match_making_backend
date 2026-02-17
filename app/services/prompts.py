@@ -222,6 +222,15 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         - "2-0d9nc30948"
 
         --------------------------------------------------
+
+        SPECIAL RULE FOR "YES", "NO", "OK", "CORRECT":
+        - IF the user says "Yes", "No", "Ok" etc.:
+            - CHECK the PREVIOUS ASSISTANT MESSAGE.
+            - IF the assistant explicitly asked a confirmation question (e.g., "Is this the person?", "Do you mean...?"):
+                -> Return "tool"
+            - ELSE:
+                -> Return "no_tool" (Treat as normal conversation)
+
         STEP 3 — VALID SEARCH → "tool"
         Return "tool" if:
         - If the user query matches these tools description
