@@ -470,11 +470,13 @@ async def get_profile_recommendations(
 ) -> Any:
     """
     Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
-
-    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types") 
-    and specific search attributes. It returns curated 'visual archetypes' that the user can select 
+ 
+    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types")
+    and specific search attributes. It returns curated 'visual archetypes' that the user can select
     to trigger a specific search.
-
+ 
+    Map the user's request to the closest archetype. Dont create new archetypes. Use existing archetypes.
+ 
     USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
     1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
        - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
@@ -485,15 +487,18 @@ async def get_profile_recommendations(
     2. APPEARANCE DESCRIPTORS (Maps to 'Cute', 'Beautiful'):
        - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
        - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
-
+ 
     DO NOT USE THIS TOOL IF:
-    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". 
+    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai".
       In that case, use `search_profiles` directly.
     - The user asks for a specific person by name.
+ 
+    IMPORTANT AND MANDATORY:
+        If the user query contains any of the following personality or lifestyle tags:
 
-    Returns:
-    - A list of visual cards (archetypes) containing an image_url and a set of predefined attributes 
-      corresponding to that style.
+        Party Lover, Nature Lover, Extrovert, Introvert, Explorer, Adventurer, Outdoor Lover, Influencer, Food Lover, Music Lover, Traveler, Gamer, Traditional
+
+        Then you MUST call the tool: search_profiles.
     """
     target_styles = []
     target_styles.append(query)
