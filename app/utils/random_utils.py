@@ -188,16 +188,18 @@ tools_specific_promtps = {
         3. HANDLING CONFIRMATION ("Yes", "That's him", "Correct"):
             - If the user is confirming a previous celebrity image shown by this tool:
             - Look at the IMMEDIATE PREVIOUS ASSISTANT MESSAGE in history.
-            - If it contains an image URL (e.g. ![image](url) or just url) and a name:
-                - Set `celebrity_name` = The name mentioned by assistant.
-                - Set `confirmed_image_url` = The extracted URL.
-                - Retain `gender` from context.
-            - IF NO URL FOUND IN HISTORY: Return error or ask for clarification.
+            - FIND THE URL used in that message. It might be in markdown like ![image](url) or just a plain url https://...
+            - EXTRACT THE EXACT URL found in the text.
+            - Set `celebrity_name` = The name mentioned by assistant.
+            - Set `confirmed_image_url` = THE ACTUAL EXTRACTED URL.
+            - Retain `gender` from context.
+            - CRITICAL: DO NOT return placeholders like "<URL_FROM...>" or "URL". You must find the actual https link.
+            - IF NO URL IS FOUND IN THE PREVIOUS ASSISTANT MESSAGE -> Return null for `confirmed_image_url`.
         4. OUTPUT JSON:
             {
                 "celebrity_name": "Name",
                 "gender": "male" | "female",
-                "confirmed_image_url": "URL" (if confirmed)
+                "confirmed_image_url": "https://..." (only if found in history)
             }
     """
 }
