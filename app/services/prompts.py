@@ -209,7 +209,6 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         Return "no_tool" if:
         - Input is gibberish or random characters (e.g., "sodij xjcdnjdk")
         - Input has no semantic meaning
-        - Input is "ok", "yes", "I" with no actionable context
 
         --------------------------------------------------
 

@@ -7,6 +7,12 @@ import aiohttp
 from typing import Optional, Tuple, Literal, Union, List
 import json
 import os
+import sys
+
+# Ensure project root is in path for imports to work
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
+from app.services.celeb_search import get_celebrity_image_pipeline
 
 
 LOGGING_FORMAT = "[%(asctime)s] %(levelname)s %(name)s:%(lineno)d - %(message)s"
@@ -652,6 +658,111 @@ async def cross_location_visual_search(
 
     except Exception as e:
         logger.exception("Cross-location visual search failed")
+        return {"error": str(e)}
+
+
+
+@mcp.tool()
+async def search_by_celebrity_lookalike(
+    user_id: str,
+    celebrity_name: str,
+    gender: Literal["male", "female"],
+    confirmed_image_url: str | None = None,
+    limit: int = 5
+) -> Any:
+    """
+    Search for profiles that look like a specific celebrity.
+    
+    This is a two-step process:
+    1. First, call with JUST `celebrity_name` and `gender`. The tool will return a celebrity image.
+    2. Ask the user to confirm if the image is correct.
+    3. If confirmed, call the tool AGAIN with `celebrity_name`, `gender`, AND `confirmed_image_url`.
+
+    Use this tool when the user says:
+    - "I want a girl looking like Aishwarya Rai"
+    - "Show me someone who looks like Virat Kohli"
+    
+    Args:
+        user_id: The user's ID
+        celebrity_name: Name of the celebrity (e.g. "Brad Pitt")
+        gender: Gender of the profile to find ("male" or "female")
+        confirmed_image_url: URL of the confirmed celebrity image (only for step 2)
+        limit: Number of results to return (default 5)
+    """
+    logger.info(f"Celeb Search: {celebrity_name}, Gender: {gender}, Confirmed: {bool(confirmed_image_url)}")
+
+    # STEP 1: Identify Celebrity & Get Image (if not confirmed yet)
+    if not confirmed_image_url:
+        try:
+            # Run blocking synchronous code in a thread
+            result = await asyncio.to_thread(get_celebrity_image_pipeline, celebrity_name)
+            
+            if not result or "error" in result:
+                return {
+                    "message": f"Could not identify a celebrity named '{celebrity_name}'. Please try a different name.",
+                    "error": result.get("error") if result else "Unknown error"
+                }
+            
+            if not result.get("celebrity"):
+                 return {
+                    "message": f"'{celebrity_name}' does not seem to be a famous public celebrity. This tool works best with famous public figures.",
+                    "is_celebrity": False
+                }
+
+            image_url = result.get("image_url")
+            corrected_name = result.get("correct_name")
+            
+            if not image_url:
+                 return {
+                    "message": f"Found celebrity '{corrected_name}' but could not find a reference image. Please try another.",
+                    "correct_name": corrected_name
+                }
+
+            # Return image for user confirmation
+            return {
+                "message": f"I found matches for {corrected_name}. Is this the person you are looking for?",
+                "is_celebrity": True,
+                "correct_name": corrected_name,
+                "image_url": image_url,
+                "needs_confirmation": True,
+                "instruction": f"Display the image {image_url} to the user and ask: 'Is this {corrected_name}?'"
+            }
+
+        except Exception as e:
+            logger.error(f"Celeb identification failed: {e}")
+            return {"error": str(e)}
+
+    # STEP 2: Search with Confirmed Image
+    try:
+        # We reuse the visual search logic but specifically for this flow
+        # We need to construct a payload that uses the image_url to find similar profiles
+        
+        # We'll use the generic search endpoint with image_url
+        payload = {
+            "image_url": confirmed_image_url,
+            "filters": {
+                "gender": gender
+            },
+            "k": limit
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{API_BASE_URL}/{user_id}/search",
+                json=payload,
+                timeout=30
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            return {
+                "message": f"Here are some profiles that look like {celebrity_name}.",
+                "docs": data.get("docs", []),
+                "count": len(data.get("docs", []))
+            }
+
+    except Exception as e:
+        logger.error(f"Celeb visual search failed: {e}")
         return {"error": str(e)}
 
 

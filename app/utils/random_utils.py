@@ -177,6 +177,28 @@ tools_specific_promtps = {
         INVALID OUTPUT EXAMPLES
         ❌ "tool_args": ["gender=female"]
         ❌ "tool_args": {{ ...all previous filters... }}
+    """,
+    "search_by_celebrity_lookalike": """
+        EXTRACTION RULES:
+        1. Extract `celebrity_name` from the user's request.
+        2. Detect `gender`:
+            - "he", "him", "man", "boy", "actor" -> "male"
+            - "she", "her", "woman", "girl", "actress" -> "female"
+            - If not explicit, infer from the celebrity's known gender if possible, or default to most likely.
+        3. HANDLING CONFIRMATION ("Yes", "That's him", "Correct"):
+            - If the user is confirming a previous celebrity image shown by this tool:
+            - Look at the IMMEDIATE PREVIOUS ASSISTANT MESSAGE in history.
+            - If it contains an image URL (e.g. ![image](url) or just url) and a name:
+                - Set `celebrity_name` = The name mentioned by assistant.
+                - Set `confirmed_image_url` = The extracted URL.
+                - Retain `gender` from context.
+            - IF NO URL FOUND IN HISTORY: Return error or ask for clarification.
+        4. OUTPUT JSON:
+            {
+                "celebrity_name": "Name",
+                "gender": "male" | "female",
+                "confirmed_image_url": "URL" (if confirmed)
+            }
     """
 }
 
