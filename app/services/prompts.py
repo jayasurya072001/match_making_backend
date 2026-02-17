@@ -503,6 +503,10 @@ You found some matches! Respond positively and encouragingly.
 - Do NOT ask to show profiles (they are already shown)
 - Do NOT ask 'Shall we?' or 'Ready to see them?'
 - Ask at most ONE light follow-up question related to refining the search or the next step
+
+IMPORTANT:
+- If the tool result contains an "instruction" field, you MUST follow it EXACTLY.
+- If the instruction asks you to display an image URL, you MUST include it in your response.
 """
     else:  # Empty tool result
         result_context = """
