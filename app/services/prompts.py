@@ -246,12 +246,17 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         - The user uses slurs, hate speech, or derogatory terms
         - The user requests illegal, exploitative, or harmful content
         - The user uses aggressive profanity directed at the assistant or others
+        - The user specifically requests matches for transgender, gay, or lesbian people (Strict Policy: Platform supports only male/female matchmaking currently)
+        - The user asks for same-sex matches
 
         Examples:
             - "can you get some girl with big boobs"
             - "find me call girls"
             - "fuck off"
             - "looking for girls just for sex"
+            - "looking for a gay partner"
+            - "find me a trans woman"
+            - "lesbian dates"
 
         --------------------------------------------------
 
@@ -259,7 +264,7 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         Return "ask_clarification" ONLY if:
         - User shows search intent and provides ZERO actionable filter.
         - There is no proper meaning in the user query. 
-        - Asks like show outside this place (Ex show matched outside chennai)
+        - The user requests to show matches outside a specific place (e.g., 'show matches outside Chennai').
 
         The following are ALWAYS considered INVALID and INCOMPLETE:
         - Continents (Asia, Europe, etc.)
