@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     AZURE_API_VERSION : str
     PERPLEXITY_API_KEY : str
  
+
     class Config:
         env_file = ".env"
 
