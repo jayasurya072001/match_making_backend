@@ -175,7 +175,7 @@ tools_specific_promtps = {
         - DO NOT include empty strings or defaults.
 
         INVALID OUTPUT EXAMPLES
-        ❌ "tool_args": ["gender=female"]
+        ❌ "tool_args": [filters]
         ❌ "tool_args": {{ ...all previous filters... }}
     """
 }
