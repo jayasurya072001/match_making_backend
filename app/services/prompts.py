@@ -229,7 +229,7 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
             - IF the assistant explicitly asked a confirmation question (e.g., "Is this the person?", "Do you mean...?"):
                 -> Return "tool"
             - ELSE:
-                -> Return "no_tool" (Treat as normal conversation)
+                -> Return "ask_clarification" (Clarify what the user is agreeing to)
 
         STEP 3 — VALID SEARCH → "tool"
         Return "tool" if:
