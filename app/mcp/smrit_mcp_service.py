@@ -259,7 +259,7 @@ async def search_profiles(
     """
         Search and filter people profiles using structured attributes and optional image similarity.
 
-        Use this tool when the user wants to:
+        Use this MCP Function when the user wants to:
         - Find, search, list, or filter people or profiles
         - Apply appearance-based attributes (age, gender, hair, face, emotion, etc.)
         - Filter by location and distance
@@ -271,10 +271,10 @@ async def search_profiles(
         - All filters are OPTIONAL and can be combined
         - Only provided arguments are applied
         - Pagination is controlled using `page` (increment page to get more results)
-        - This tool does NOT perform name-based lookup
+        - This MCP Function does NOT perform name-based lookup
         - `tags` should be a comma-separated string if multiple
 
-        Do NOT use this tool when:
+        Do NOT use this MCP Function when:
         - The user is only chatting or asking general questions
         - The user provides a person’s name (use `search_person_by_name` instead)
         - The input is ambiguous or requires clarification
@@ -414,7 +414,7 @@ async def search_person_by_name(
     """
         Search for a specific person by name using text-based matching.
 
-        Use this tool when the user:
+        Use this MCP Function when the user:
         - Mentions a specific person’s name
         - Asks to find someone by name or partial name
         - Wants to look up an individual directly
@@ -424,13 +424,13 @@ async def search_person_by_name(
         - Returns up to `limit` results
         - Does NOT support attribute-based filtering
 
-        Do NOT use this tool when:
+        Do NOT use this MCP Function when:
         - The user wants to filter by appearance, age, gender, or location
         - The user requests browsing or discovery of profiles
         - The user asks for “girls”, “people”, or general profile searches
 
         Notes:
-        - This tool is name-driven ONLY
+        - This MCP Function is name-driven ONLY
         - For discovery or filtering, use `search_profiles`
     """
     try:
@@ -477,13 +477,13 @@ async def get_profile_recommendations(
     """
     Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
  
-    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types")
+    This MCP Function bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types")
     and specific search attributes. It returns curated 'visual archetypes' that the user can select
     to trigger a specific search.
  
     Map the user's request to the closest archetype. Dont create new archetypes. Use existing archetypes.
  
-    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
+    USE THIS MCP Function WHEN the user's request contains subjective or descriptive terms related to:
     1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
        - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
        - "Modern", "Stylish", "Trendy", "Fashionable", "Western" -> Returns 'Modern/Trendy' archetype.
@@ -494,7 +494,7 @@ async def get_profile_recommendations(
        - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
        - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
  
-    DO NOT USE THIS TOOL IF:
+    DO NOT USE THIS MCP Function IF:
     - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai".
       In that case, use `search_profiles` directly.
     - The user asks for a specific person by name.
@@ -504,7 +504,7 @@ async def get_profile_recommendations(
 
         Party Lover, Nature Lover, Extrovert, Introvert, Explorer, Adventurer, Outdoor Lover, Influencer, Food Lover, Music Lover, Traveler, Gamer, Traditional
 
-        Then you MUST call the tool: search_profiles.
+        Then you MUST call the MCP Function: search_profiles.
     """
     target_styles = []
     target_styles.append(query)
@@ -565,7 +565,7 @@ async def cross_location_visual_search(
     limit: int = 5
 ) -> Any:
     """
-    This tool finds profiles from one location that visually resemble profiles from another location.
+    This MCP Function finds profiles from one location that visually resemble profiles from another location.
     
     It is designed to answer queries like:
     1. "I need a kannada boy who looks like west indian"
@@ -674,11 +674,11 @@ async def search_by_celebrity_lookalike(
     Search for profiles that look like a specific celebrity.
     
     This is a two-step process:
-    1. First, call with JUST `celebrity_name` and `gender`. The tool will return a celebrity image.
+    1. First, call with JUST `celebrity_name` and `gender`. This MCP Function will return a celebrity image.
     2. Ask the user to confirm if the image is correct.
-    3. If confirmed, call the tool AGAIN with `celebrity_name`, `gender`, AND `confirmed_image_url`.
+    3. If confirmed, call this MCP Function AGAIN with `celebrity_name`, `gender`, AND `confirmed_image_url`.
 
-    Use this tool when the user says:
+    Use this MCP Function when the user says:
     - "I want a girl looking like Aishwarya Rai"
     - "Show me someone who looks like Virat Kohli"
     
