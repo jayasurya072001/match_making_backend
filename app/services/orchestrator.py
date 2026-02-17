@@ -367,7 +367,8 @@ class OrchestratorService:
         if resp.get("error"):
             raise Exception(f"LLM Error in Tool Check: {resp.get('error')}")
 
-        tool_required = resp.get("tool_required", "")
+        # Prefer 'decision' key as per prompt, fallback to 'tool_required'
+        tool_required = resp.get("decision") or resp.get("tool_required", "")
         return tool_required
 
     async def _step_select_required_tool(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, session_id: Optional[str] = None) -> Optional[str]:
