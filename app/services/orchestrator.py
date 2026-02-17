@@ -621,14 +621,29 @@ class OrchestratorService:
         logger.info(f"Tool Args Response: {resp}")
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
+        
+        # Robust handling: If extraction failed (error/json parse error) BUT we have image_url, 
+        # we should proceed with just image_url.
         tool_args = resp.get("tool_args", {})
+        error = resp.get("error")
 
+        if error and image_url and selected_tool == "search_profiles":
+            logger.warning(f"LLM Tool Args extraction failed: {error}, but proceeding because image_url is present.")
+            tool_args = {} # Reset to empty and fill below
+        
         if not tool_args:
-            logger.info(f"No tool args returned: {resp}")
-            tool_args = {}
+             # If strictly no args and no image_url, it might be an issue, but for now log it.
+             # If error exists and not handled above, we might want to log it.
+             logger.info(f"No tool args returned or extraction failed: {resp}")
+             if not isinstance(tool_args, dict):
+                 tool_args = {}
 
         if isinstance(tool_args, str):
-            tool_args = json.loads(tool_args)
+            try:
+                tool_args = json.loads(tool_args)
+            except Exception:
+                logger.error(f"Failed to parse tool_args string: {tool_args}")
+                tool_args = {}
 
         if image_url and selected_tool == "search_profiles":
             logger.info(f"Injecting image_url into tool args: {image_url}")
