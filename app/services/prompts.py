@@ -111,11 +111,11 @@ def get_tool_args_prompt(selected_tool: str, specific_tool_prompt: str, tool_sch
         - Do NOT include comments like // in the JSON.
         
         OUTPUT FORMAT (JSON ONLY)
-        {
-            "tool_args": {
+        {{
+            "tool_args": {{
                 "arg_name": "arg_value"
-            }
-        }
+            }}
+        }}
     """
 
 def get_summary_update_prompt():
