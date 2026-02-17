@@ -93,9 +93,9 @@ async def search_profiles(
     gender: Optional[
         Union[Literal["male", "female"], List[Literal["male", "female"]]]
     ] = None,
-    age_group: Optional[
-        Union[Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]]
-    ] = None,
+    # age_group: Optional[
+    #     Union[Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]]
+    # ] = None,
     ethnicity: Optional[
         Union[Literal["white", "black", "asian", "brown"], List[Literal["white", "black", "asian", "brown"]]]
     ] = None,
@@ -123,15 +123,15 @@ async def search_profiles(
     hair_style: Optional[
         Union[Literal["straight", "curly"], List[Literal["straight", "curly"]]]
     ] = None,
-    emotion: Optional[
-        Union[
-            Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
-            List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]]
-        ]
-    ] = None,
-    fore_head_height: Optional[
-        Union[Literal["low", "high"], List[Literal["low", "high"]]]
-    ] = None,
+    # emotion: Optional[
+    #     Union[
+    #         Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
+    #         List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]]
+    #     ]
+    # ] = None,
+    # fore_head_height: Optional[
+    #     Union[Literal["low", "high"], List[Literal["low", "high"]]]
+    # ] = None,
     eyewear: Optional[
         Union[
             Literal["prescription_glasses", "sunglasses"],
@@ -145,11 +145,11 @@ async def search_profiles(
         Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
     ] = None,
     # New Fields
-    mole: Optional[
-        Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
-    ] = None,
-    scars: Optional[str] = None,
-    earrings: Optional[str] = None,
+    # mole: Optional[
+    #     Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
+    # ] = None,
+    # scars: Optional[str] = None,
+    # earrings: Optional[str] = None,
 
     # attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None,
     attire: Optional[
@@ -161,9 +161,9 @@ async def search_profiles(
     body_shape: Optional[
     Union[Literal["fit", "slim", "fat", "none"], List[Literal["fit", "slim", "fat", "none"]]]
     ] = None,
-    lip_stick: Optional[
-        Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
-    ] = None,
+    # lip_stick: Optional[
+    #     Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
+    # ] = None,
     skin_color: Optional[
         Union[Literal["white", "black", "none", "brown"], List[Literal["white", "black", "none", "brown"]]]
     ] = None,
@@ -482,15 +482,15 @@ async def get_profile_recommendations(
     gender: Optional[Literal["male", "female"]] = None
 ) -> Any:
     """
-    Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
- 
-    This MCP Function bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types")
-    and specific search attributes. It returns curated 'visual archetypes' that the user can select
+     Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
+
+    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types") 
+    and specific search attributes. It returns curated 'visual archetypes' that the user can select 
     to trigger a specific search.
- 
+
     Map the user's request to the closest archetype. Dont create new archetypes. Use existing archetypes.
- 
-    USE THIS MCP Function WHEN the user's request contains subjective or descriptive terms related to:
+
+    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
     1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
        - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
        - "Modern", "Stylish", "Trendy", "Fashionable", "Western" -> Returns 'Modern/Trendy' archetype.
@@ -500,18 +500,15 @@ async def get_profile_recommendations(
     2. APPEARANCE DESCRIPTORS (Maps to 'Cute', 'Beautiful'):
        - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
        - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
- 
-    DO NOT USE THIS MCP Function IF:
-    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai".
+
+    DO NOT USE THIS TOOL IF:
+    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". 
       In that case, use `search_profiles` directly.
     - The user asks for a specific person by name.
- 
-    IMPORTANT AND MANDATORY:
-        If the user query contains any of the following personality or lifestyle tags:
 
-        Party Lover, Nature Lover, Extrovert, Introvert, Explorer, Adventurer, Outdoor Lover, Influencer, Food Lover, Music Lover, Traveler, Gamer, Traditional
-
-        Then you MUST call the MCP Function: search_profiles.
+    IMPORTANT: 
+        - Try to map to the search_profile tool as much as possible. If you arent sure, use this tool.
+        - This tool is only used for recommending profiles to the user. 
     """
     target_styles = []
     target_styles.append(query)
