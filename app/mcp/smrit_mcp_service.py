@@ -280,6 +280,10 @@ async def search_profiles(
 
     # 1. Construct Filters Dict from flattened args
     # We map local args to the SearchFilters schema structure expected by the API
+    
+    # Validate image_url if provided
+    if image_url and not (image_url.startswith("http://") or image_url.startswith("https://")):
+        return "Error: Invalid image_url provided. Please provide a valid HTTP/HTTPS URL."
 
     # Normalize numeric ranges
     age_range = normalize_range(min_age, max_age, 18, 80, int)
@@ -442,6 +446,9 @@ async def search_person_by_name(
         return f"Error calling API: {e.response.text}"
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+
 
 
 

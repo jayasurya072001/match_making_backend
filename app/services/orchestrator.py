@@ -124,7 +124,7 @@ class OrchestratorService:
     # --------------------------
     # Core Logic
     # --------------------------
-    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None, selected_filters: Optional[dict] = None):
+    async def handle_request(self, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None, selected_filters: Optional[dict] = None, image_url: Optional[str] = None):
         """
         Public entry point: Accepts a user query and returns a request_id.
         If selected_filters is provided, bypasses LLM steps and directly executes search.
@@ -139,11 +139,11 @@ class OrchestratorService:
         metrics_service.record_request_start()
 
         # Spawn the orchestration flow
-        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type, recommendation_ids, selected_filters))
+        asyncio.create_task(self._orchestrate(request_id, user_id, query, session_id, person_id, personality_id, session_type, recommendation_ids, selected_filters, image_url))
         
         return request_id
 
-    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None, selected_filters: Optional[dict] = None):
+    async def _orchestrate(self, request_id: str, user_id: str, query: str, session_id: Optional[str] = None, person_id: Optional[str] = None, personality_id: Optional[str] = None, session_type: Optional[str] = None, recommendation_ids: Optional[List[str]] = None, selected_filters: Optional[dict] = None, image_url: Optional[str] = None):
         tool_result_str = ""
         tool_args = None
         structured_result = None
@@ -209,14 +209,26 @@ class OrchestratorService:
             else:
                 # Normal flow: LLM-driven
                 # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
-                if recommendation_ids:
+                if image_url:
+                    logger.info("Forcing tool decision due to image_url")
+                    tool_required = {"decision": "tool"}
+                    selected_tool = "search_profiles"
+                    decision = "tool"
+                elif recommendation_ids:
                     logger.info("Forcing tool decision due to recommendation_ids")
                     tool_required = {"decision": "tool"}
                 else:
                     tool_required = await self._step_check_tool(request_id, user_id, query, history, session)
 
                 tool_required = normalize_decision_tool(tool_required)
-                decision = tool_required.get("decision", "no_tool")
+                # If we forced decision, ensure it persists (normalize might overwrite if it expects dict)
+                # normalize_decision_tool usually handles dict/string. 
+                # If we manually set tool_required={"decision": "tool"}, normalize should be fine.
+                
+                # If we already set decision (e.g. for image_url), keep it? 
+                # normalize_decision_tool returns a dict.
+                if not decision:
+                     decision = tool_required.get("decision", "no_tool")
 
                 logger.info(f"Step 1 result: Tool Required Decision - {decision} and type is {type(decision)}")
 
@@ -225,14 +237,16 @@ class OrchestratorService:
 
                 elif decision == "tool":
                     # 3. New Step 2: Select Tool
-                    selected_tool = await self._step_select_required_tool(
-                        request_id,
-                        user_id,
-                        query,
-                        history,
-                        session,
-                        session_id
-                    )
+                    # Only select if not already selected (e.g. by image_url force)
+                    if not selected_tool:
+                        selected_tool = await self._step_select_required_tool(
+                            request_id,
+                            user_id,
+                            query,
+                            history,
+                            session,
+                            session_id
+                        )
                     logger.info(f"Step 2 result: Selected Tool {selected_tool}")
 
                     if selected_tool:
@@ -244,7 +258,8 @@ class OrchestratorService:
                             history,
                             session,
                             selected_tool,
-                            session_id
+                            session_id,
+                            image_url=image_url
                         )
                     else:
                         logger.warning("No tool selected in Step 2, skipping execution")
@@ -564,7 +579,7 @@ class OrchestratorService:
         return current_result
 
 
-    async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None):
+    async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None, image_url: Optional[str] = None):
         """Step 3: Extract args for the SELECTED tool and execute."""
         final_tool_args = {}
         tool_result_str = None
@@ -606,14 +621,33 @@ class OrchestratorService:
         logger.info(f"Tool Args Response: {resp}")
         
         metrics_service.record_step_duration("get_tool_args", time.time() - t0)
+        
+        # Robust handling: If extraction failed (error/json parse error) BUT we have image_url, 
+        # we should proceed with just image_url.
         tool_args = resp.get("tool_args", {})
+        error = resp.get("error")
 
+        if error and image_url and selected_tool == "search_profiles":
+            logger.warning(f"LLM Tool Args extraction failed: {error}, but proceeding because image_url is present.")
+            tool_args = {} # Reset to empty and fill below
+        
         if not tool_args:
-            logger.info(f"No tool args returned: {resp}")
-            tool_args = {}
+             # If strictly no args and no image_url, it might be an issue, but for now log it.
+             # If error exists and not handled above, we might want to log it.
+             logger.info(f"No tool args returned or extraction failed: {resp}")
+             if not isinstance(tool_args, dict):
+                 tool_args = {}
 
         if isinstance(tool_args, str):
-            tool_args = json.loads(tool_args)
+            try:
+                tool_args = json.loads(tool_args)
+            except Exception:
+                logger.error(f"Failed to parse tool_args string: {tool_args}")
+                tool_args = {}
+
+        if image_url and selected_tool == "search_profiles":
+            logger.info(f"Injecting image_url into tool args: {image_url}")
+            tool_args["image_url"] = image_url
         
         await self._send_status(request_id, f"TOOL_SELECTED: {selected_tool}")
         
