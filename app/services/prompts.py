@@ -507,8 +507,9 @@ def get_tool_summary_prompt(
         result_context = """
 You found some matches! Respond positively and encouragingly.
 - Speak at a high level (matchmaker style)
-- Don't list profiles, counts, or attributes
 - Just announce the results with enthusiasm (e.g., 'Here are some great matches' or 'I found these for you')
+- Do NOT list profiles, names, counts, or attributes in your text response.
+- Do NOT include any image URLs or links to profiles (The UI handles this).
 - Do NOT ask to show profiles (they are already shown)
 - Do NOT ask 'Shall we?' or 'Ready to see them?'
 - Ask at most ONE light follow-up question related to refining the search or the next step
