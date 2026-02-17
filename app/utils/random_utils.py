@@ -175,8 +175,39 @@ tools_specific_promtps = {
         - DO NOT include empty strings or defaults.
 
         INVALID OUTPUT EXAMPLES
-        ❌ "tool_args": ["gender=female"]
+        ❌ "tool_args": [filters]
         ❌ "tool_args": {{ ...all previous filters... }}
+    """,
+    "search_by_celebrity_lookalike": """
+        EXTRACTION RULES:
+        1. Extract `celebrity_name` from the user's request.
+        2. Detect `gender`:
+            - "he", "him", "man", "boy", "actor" -> "male"
+            - "she", "her", "woman", "girl", "actress" -> "female"
+            - If not explicit, infer from the celebrity's known gender if possible, or default to most likely.
+        3. HANDLING CONFIRMATION ("Yes", "That's him", "Correct"):
+            - If the user is confirming a previous celebrity image shown by this tool:
+            - Look at the IMMEDIATE PREVIOUS ASSISTANT MESSAGE in history.
+            - FIND THE URL used in that message. It might be in markdown like ![image](url) or just a plain url https://...
+            - EXTRACT THE EXACT URL found in the text.
+            - Set `celebrity_name` = The name mentioned by assistant.
+            - Set `confirmed_image_url` = THE ACTUAL EXTRACTED URL.
+            - Retain `gender` from context.
+            - CRITICAL: DO NOT return placeholders like "<URL_FROM...>" or "URL". You must find the actual https link.
+            - IF NO URL IS FOUND IN THE PREVIOUS ASSISTANT MESSAGE:
+                - IF user input is strictly "Yes", "Ok", "Sure", "Correct" (Ambiguous):
+                    - Set `confirmed_image_url` = `null` (Reset state to avoid loop).
+                - ELSE:
+                    - OMIT `confirmed_image_url` field (Preserve state for filters/pagination).
+        4. HANDLING NEW SEARCH ("I want someone like...", "Show me..."):
+            - If the user is asking for a different celebrity or starting a new search:
+            - Set `confirmed_image_url` to `null` (Must be explicit null to clear previous state).
+        5. OUTPUT JSON:
+            {
+                "celebrity_name": "Name",
+                "gender": "male" | "female",
+                "confirmed_image_url": "https://..." | null
+            }
     """
 }
 

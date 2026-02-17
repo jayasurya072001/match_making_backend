@@ -202,6 +202,11 @@ class ChatRequestBody(BaseModel):
         description="Optional fillers that needs to be filled while waiting for the response"
     )
 
+    image_url: Optional[str] = Field(
+        None,
+        description="Optional image url to be used for search along with the query"
+    )
+
     recommendation_ids: Optional[List[str]] = Field(
         [],
         description="Optional list of recommendation ids to be injected into the chat context"

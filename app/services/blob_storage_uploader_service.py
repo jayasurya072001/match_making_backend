@@ -34,4 +34,23 @@ class BlobStorageUploaderService:
             logger.error(f"Error uploading audio to blob storage: {e}")
             return None
 
+    def upload_file(self, file_data: bytes, file_name: str, content_type: str = "image/jpeg") -> str | None:
+        try:
+            # Generate unique filename if not provided or to ensure uniqueness? 
+            # The prompt implies we might just want to use a unique name.
+            # Let's use uuid to be safe and avoid collisions
+            extension = file_name.split(".")[-1] if "." in file_name else "jpg"
+            unique_file_name = f"{uuid.uuid4().hex}.{extension}"
+            
+            blob_client = self.container_client.get_blob_client(unique_file_name)
+            blob_client.upload_blob(
+                file_data,
+                overwrite=True,
+                content_settings=ContentSettings(content_type=content_type)
+            )
+            return blob_client.url
+        except Exception as e:
+            logger.error(f"Error uploading file to blob storage: {e}")
+            return None
+
 blob_storage_uploader_service = BlobStorageUploaderService()
