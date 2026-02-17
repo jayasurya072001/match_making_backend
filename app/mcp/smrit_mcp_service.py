@@ -766,6 +766,10 @@ async def upload_image(
     
     """
     
+    # Validate image_url
+    if not image_url or not (image_url.startswith("http://") or image_url.startswith("https://")):
+        return "Error: Invalid image_url provided. Please provide a valid HTTP/HTTPS URL."
+
     # Reuse the logic of search_profiles, but ensure image_url is passed
     return await search_profiles(
         user_id=user_id,
