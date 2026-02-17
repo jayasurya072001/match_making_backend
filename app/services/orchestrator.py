@@ -603,6 +603,8 @@ class OrchestratorService:
         tool_specific_prompt = get_tool_specific_prompt(selected_tool)
 
         args_system_prompt = get_tool_args_prompt(selected_tool, tool_specific_prompt, tool_schema, formatted_history)
+        
+        logger.info(f"DEBUG HISTORY FOR TOOL ARGS:\n{formatted_history}")
 
         # Dispatch Request
         llm_req = LLMRequest(
