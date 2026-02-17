@@ -194,7 +194,11 @@ tools_specific_promtps = {
             - Set `confirmed_image_url` = THE ACTUAL EXTRACTED URL.
             - Retain `gender` from context.
             - CRITICAL: DO NOT return placeholders like "<URL_FROM...>" or "URL". You must find the actual https link.
-            - IF NO URL IS FOUND IN THE PREVIOUS ASSISTANT MESSAGE -> Return null for `confirmed_image_url`.
+            - IF NO URL IS FOUND IN THE PREVIOUS ASSISTANT MESSAGE:
+                - IF user input is strictly "Yes", "Ok", "Sure", "Correct" (Ambiguous):
+                    - Set `confirmed_image_url` = `null` (Reset state to avoid loop).
+                - ELSE:
+                    - OMIT `confirmed_image_url` field (Preserve state for filters/pagination).
         4. HANDLING NEW SEARCH ("I want someone like...", "Show me..."):
             - If the user is asking for a different celebrity or starting a new search:
             - Set `confirmed_image_url` to `null` (Must be explicit null to clear previous state).
