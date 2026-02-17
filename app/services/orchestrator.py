@@ -268,7 +268,26 @@ class OrchestratorService:
                     logger.info(f"Decision={decision}, skipping tool execution")
 
                 else:
-                    logger.warning(f"Invalid tool decision received: {decision}")
+                    # Fallback: Check if decision is actually a tool name
+                    tool_list = self._mcp_client.get_sections("tools")
+                    valid_tool_names = [t.get("name") for t in tool_list]
+                    
+                    if decision in valid_tool_names:
+                        logger.info(f"Decision '{decision}' matches a valid tool name. Treating as 'tool' decision.")
+                        selected_tool = decision
+                        decision = "tool"  # Normalize decision for summary context
+                        
+                        tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                            request_id,
+                            user_id,
+                            query,
+                            history,
+                            session,
+                            selected_tool,
+                            session_id
+                        )
+                    else:
+                        logger.warning(f"Invalid tool decision received: {decision}")
 
             await self._step_summarize(
                 request_id, user_id, query, history, session_summary, 
@@ -382,7 +401,8 @@ class OrchestratorService:
         if resp.get("error"):
             raise Exception(f"LLM Error in Tool Check: {resp.get('error')}")
 
-        tool_required = resp.get("tool_required", "")
+        # Prefer 'decision' key as per prompt, fallback to 'tool_required'
+        tool_required = resp.get("decision") or resp.get("tool_required", "")
         return tool_required
 
     async def _step_select_required_tool(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, session_id: Optional[str] = None) -> Optional[str]:
@@ -598,6 +618,8 @@ class OrchestratorService:
         tool_specific_prompt = get_tool_specific_prompt(selected_tool)
 
         args_system_prompt = get_tool_args_prompt(selected_tool, tool_specific_prompt, tool_schema, formatted_history)
+        
+        logger.info(f"DEBUG HISTORY FOR TOOL ARGS:\n{formatted_history}")
 
         # Dispatch Request
         llm_req = LLMRequest(

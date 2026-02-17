@@ -213,7 +213,6 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         Return "no_tool" if:
         - Input is gibberish or random characters (e.g., "sodij xjcdnjdk")
         - Input has no semantic meaning
-        - Input is "ok", "yes", "I" with no actionable context
 
         --------------------------------------------------
 
@@ -227,6 +226,15 @@ def get_tool_check_prompt(history_str: str = "", formatted_tool_descriptions: st
         - "2-0d9nc30948"
 
         --------------------------------------------------
+
+        SPECIAL RULE FOR "YES", "NO", "OK", "CORRECT":
+        - IF the user says "Yes", "No", "Ok" etc.:
+            - CHECK the PREVIOUS ASSISTANT MESSAGE.
+            - IF the assistant explicitly asked a confirmation question (e.g., "Is this the person?", "Do you mean...?"):
+                -> Return "tool"
+            - ELSE:
+                -> Return "ask_clarification" (Clarify what the user is agreeing to)
+
         STEP 3 — VALID SEARCH → "tool"
         Return "tool" if:
         - If the user query matches these tools description
@@ -503,11 +511,18 @@ def get_tool_summary_prompt(
         result_context = """
 You found some matches! Respond positively and encouragingly.
 - Speak at a high level (matchmaker style)
-- Don't list profiles, counts, or attributes
 - Just announce the results with enthusiasm (e.g., 'Here are some great matches' or 'I found these for you')
+- Do NOT list profiles, names, counts, or attributes in your text response.
+- Do NOT include any image URLs or links to profiles (The UI handles this).
 - Do NOT ask to show profiles (they are already shown)
 - Do NOT ask 'Shall we?' or 'Ready to see them?'
 - Ask at most ONE light follow-up question related to refining the search or the next step
+
+IMPORTANT:
+- If the tool result contains an "instruction" field, you MUST follow it EXACTLY.
+- If the instruction asks you to display an image URL, you MUST include it in your response.
+- DO NOT replace links with placeholders like [IMAGE URL].
+- DO NOT say "Here is the image" without actually providing the markdown link.
 """
     else:  # Empty tool result
         result_context = """
