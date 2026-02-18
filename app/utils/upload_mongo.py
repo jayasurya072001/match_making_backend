@@ -6,7 +6,7 @@ import requests
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://myuser:mypassword@48.217.49.77:27017/")
 MONGO_DB = os.getenv("MONGO_DB", "face-attributes-matrimony-matches")
-MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "latest_labelling_face_attributes")
+MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "Indian")
 
 API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1/profiles/930/save")
 API_TIMEOUT = 10
