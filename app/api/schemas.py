@@ -239,7 +239,7 @@ class UpdateProfileSchema(BaseModel):
     collection_name: str = Field(default="Indian", description="The name of the collection (user_id) to update in")
     
     # Update fields with Literal validation
-    gender: Optional[Literal["male", "female"]] = None
+    gender: Optional[Literal["Male", "Female"]] = None
     ethnicity: Optional[Literal["white", "black", "Asian", "brown"]] = None
     hair_color: Optional[Literal["black", "blonde", "white", "grey", "others"]] = None
     eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None
