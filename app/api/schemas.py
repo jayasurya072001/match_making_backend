@@ -245,19 +245,19 @@ class UpdateProfileSchema(BaseModel):
     eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None
     face_shape: Optional[Literal["oval", "round", "square", "diamond"]] = None
     head_hair: Optional[Literal["present", "absent"]] = None
-    beard: Optional[Literal["stubble", "full", "goatee"]] = None
-    mustache: Optional[Literal["thin", "thick", "handlebar"]] = None
-    hair_style: Optional[Literal["straight", "curly"]] = None
-    eyewear: Optional[Literal["prescription_glasses", "sunglasses"]] = None
-    headwear: Optional[Literal["hat", "cap", "turban"]] = None
+    beard: Optional[Literal["stubble", "full", "goatee","clean_shave"]] = None
+    mustache: Optional[Literal["thin", "thick", "handlebar","none"]] = None
+    hair_style: Optional[Literal["straight", "curly","none"]] = None
+    eyewear: Optional[Literal["prescription_glasses", "sunglasses","none"]] = None
+    headwear: Optional[Literal["hat", "cap", "turban","none"]] = None
     eyebrow: Optional[Literal["present", "absent"]] = None
     attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None
     body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None
     skin_color: Optional[Literal["white", "black", "none", "brown"]] = None
-    eye_size: Optional[Literal["normal", "large", "small", "None"]] = None
+    eye_size: Optional[Literal["normal", "large", "small", "none"]] = None
     face_size: Optional[Literal["large", "medium", "small"]] = None
     face_structure: Optional[Literal["symmetric", "asymmetric"]] = None
-    hair_length: Optional[Literal["long", "medium", "short"]] = None
+    hair_length: Optional[Literal["long", "medium", "short","none"]] = None
     
     # Allow extra fields or specific others? User said "these are the fields literals that needs to be updated". 
     # I will assume other fields can be passed but these specific ones are validated.
