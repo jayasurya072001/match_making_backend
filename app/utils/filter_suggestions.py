@@ -14,12 +14,28 @@ import json
 logger = logging.getLogger(__name__)
 
 # Predefined major cities for location-based suggestions
+# Predefined major cities for location-based suggestions
 PREDEFINED_LOCATIONS = ["Chennai", "Mumbai", "Delhi", "Bangalore", "Hyderabad"]
+
+# Region Mapping for fallback suggestions
+REGION_MAPPING = {
+    "North India": ["Delhi", "Lucknow", "Amritsar", "Kashmir", "Kohima"],
+    "South India": ["Chennai", "Kochi", "Mysore", "Vizag", "Coimbatore", "Hyderabad", "Bangalore", "Thiruvananthapuram"],
+    "West India": ["Mumbai", "Pune", "Ahmedabad"],
+    "East India": ["Kolkata"]
+}
+
+# Reverse mapping to find region from city
+CITY_TO_REGION = {}
+for region, cities in REGION_MAPPING.items():
+    for city in cities:
+        CITY_TO_REGION[city.lower()] = region
+
 
 # Filter categories for prioritization
 HIGH_PRIORITY_FILTERS = ["gender", "location"]
 APPEARANCE_FILTERS = [
-    "age", "ethnicity", "hair_color", "hair_style", "eye_color", 
+    "age", "ethnicity", "hair_color", "hair_style", "eye_color",
     "face_shape", "emotion", "beard", "mustache", "eyewear", "headwear",
     "attire", "body_shape", "skin_color", "hair_length"
 ]
@@ -143,7 +159,49 @@ def _create_location_based_combinations(
         filters_per_large = min(2, num_additional_filters)  # Add 2-3 filters
         filters_per_medium = 1  # Add 1 filter
     
-    for idx, location in enumerate(PREDEFINED_LOCATIONS):
+    filters_per_medium = 1  # Add 1 filter
+    
+    # --- DETERMINE LOCATIONS TO TRY ---
+    locations_to_try = []
+    
+    # 1. Check for specific region in location filter
+    input_location = tool_args.get("location", "").strip() if tool_args.get("location") else ""
+    
+    # Normalized input for case-insensitive check
+    input_lower = input_location.lower()
+    
+    # Check if input matches a known Region Key directly (e.g. "North India")
+    matched_region_cities = None
+    
+    for region, cities in REGION_MAPPING.items():
+        if region.lower() in input_lower:
+             matched_region_cities = cities
+             break
+    
+    if matched_region_cities:
+        # User asked for a region (e.g. "North India") -> Try cities in that region
+        locations_to_try = matched_region_cities
+        
+    elif input_lower in CITY_TO_REGION:
+        # User asked for a specific city -> Try other cities in the SAME region
+        region = CITY_TO_REGION[input_lower]
+        locations_to_try = REGION_MAPPING[region]
+        
+        # Ensure the original city is first (though this function is for NO results, so usually we skip it? 
+        # But maybe we want variants WITH input city but FEWER filters? 
+        # For now, let's just use the region list. 
+        # Optimization: Move original city to front if present, or maybe we want ALTERNATIVES, so move it to end?)
+        
+        # Let's shuffle slightly but keep major ones? For now, just use the list.
+        
+    else:
+        # Default fallback
+        locations_to_try = PREDEFINED_LOCATIONS
+
+    # Ensure we don't try too many locations, maybe top 5-6
+    locations_to_try = locations_to_try[:6]
+
+    for idx, location in enumerate(locations_to_try):
         combo = {"location": location}
         
         # Always include gender if available
