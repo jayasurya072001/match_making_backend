@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Path
+from datetime import datetime
 from app.api.schemas import UserProfile, SearchRequest, UpdateProfileSchema
 from app.services.mongo import mongo_service
 from app.services.redis_service import redis_service
@@ -357,7 +358,14 @@ async def update_profile_attributes(
         # await redis_service.save_profile(user_id, profile.model_dump(mode='json'), profile.embeddings)
         # So it expects the full profile dict.
         
-        await redis_service.save_profile(user_id, updated_mongo, embeddings)
+        # Convert datetime objects to string for Redis serialization
+        redis_profile_data = updated_mongo.copy()
+        if "created_at" in redis_profile_data and isinstance(redis_profile_data["created_at"], datetime):
+             redis_profile_data["created_at"] = redis_profile_data["created_at"].isoformat()
+        if "updated_at" in redis_profile_data and isinstance(redis_profile_data["updated_at"], datetime):
+             redis_profile_data["updated_at"] = redis_profile_data["updated_at"].isoformat()
+        
+        await redis_service.save_profile(user_id, redis_profile_data, embeddings)
         
         return {
             "status": "success", 

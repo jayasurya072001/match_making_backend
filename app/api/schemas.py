@@ -240,17 +240,17 @@ class UpdateProfileSchema(BaseModel):
     
     # Update fields with Literal validation
     gender: Optional[Literal["Male", "Female"]] = None
-    ethnicity: Optional[Literal["white", "black", "Asian", "brown"]] = None
+    ethnicity: Optional[Literal["white", "black", "asian", "brown"]] = None
     hair_color: Optional[Literal["black", "blonde", "white", "grey", "others"]] = None
     eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None
     face_shape: Optional[Literal["oval", "round", "square", "diamond"]] = None
     head_hair: Optional[Literal["present", "absent"]] = None
-    beard: Optional[Literal["stubble", "full", "goatee", "none"]] = None # added "none" based on user sample doc "beard": "none"
-    mustache: Optional[Literal["thin", "thick", "handlebar", "none"]] = None # added "none" based on user sample doc "mustache": "none"
+    beard: Optional[Literal["stubble", "full", "goatee"]] = None
+    mustache: Optional[Literal["thin", "thick", "handlebar"]] = None
     hair_style: Optional[Literal["straight", "curly"]] = None
-    eyewear: Optional[Literal["prescription_glasses", "sunglasses", "none"]] = None # added "none"
-    headwear: Optional[Literal["hat", "cap", "turban", "None"]] = None # added "None"
-    eyebrow: Optional[Literal["present", "absent", "Normal"]] = None # added "Normal" from sample doc? Wait, sample has "Eyebrow": "Normal". The user requested "eyebrow : Literal['present', 'absent']". I should respect the user's request but also be aware of existing data. I will stick to the requested literals for now, or maybe include "Normal" to avoid validation errors if they send existing data. The user request "eyebrow : Literal["present", "absent"]" is specific. I will stick to it.
+    eyewear: Optional[Literal["prescription_glasses", "sunglasses"]] = None
+    headwear: Optional[Literal["hat", "cap", "turban"]] = None
+    eyebrow: Optional[Literal["present", "absent"]] = None
     attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None
     body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None
     skin_color: Optional[Literal["white", "black", "none", "brown"]] = None
