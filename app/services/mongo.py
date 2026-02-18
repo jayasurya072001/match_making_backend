@@ -12,15 +12,6 @@ class MongoService:
         self.db = self.client[settings.MONGO_DB_NAME]
         self.chat_db = self.client[settings.MONGO_CHAT_DB]
         self.personality_db = self.client[settings.MONGO_PERSONALITY_DB]
-        
-        # External DB Connection
-        # Using the specific string provided by user. 
-        # Ideally this should be in settings, but treating as specific requirement for now.
-        host_ip = "48.217.49.77" 
-        # Note: In a real scenario,credentials should be env vars.
-        # But per user request "connection string : mongodb://myuser:mypassword@48.217.49.77:27017/"
-        self.external_client = AsyncIOMotorClient("mongodb://myuser:mypassword@48.217.49.77:27017/")
-        self.external_db = self.external_client["face-attributes-matrimony-matches"]
 
     async def check_connection(self):
         try:
@@ -168,41 +159,5 @@ class MongoService:
         collection = self.personality_db[user_id]
         await collection.drop()
         return True
-
-    async def update_external_profile(self, collection_name: str, profile_id: str, data: dict):
-        """
-        Update profile in external database.
-        """
-        try:
-            # The user specified collection: Indian. We assume collection_name passed (user_id) maps to this.
-            # However, if strict mapping is needed:
-            # collection = self.external_db["Indian"] # if explicit
-            # But we stick to dynamic collection based on user_id as per app pattern.
-            collection = self.external_db[collection_name]
-            
-            # The sample doc shows "id": "uuid...". We match on that.
-            # We don't want to use valid literals validation here? 
-            # The user said "we are updating it in this". So we pass the same update data.
-            await collection.update_one({"id": profile_id}, {"$set": data})
-            return True
-        except Exception as e:
-            logging.error(f"Failed to update external profile: {e}")
-            # We don't raise here to avoid failing the main request? 
-            # User said "we are updating it in this and also...". Implies it's part of the flow.
-            # Depending on strictness, we might rename this method to indicate it attempts to update.
-            # I will let it be silent error or minimal logging unless critical.
-            return False
-
-    async def delete_external_profile(self, collection_name: str, profile_id: str):
-        """
-        Delete profile from external database.
-        """
-        try:
-            collection = self.external_db[collection_name]
-            await collection.delete_one({"id": profile_id})
-            return True
-        except Exception as e:
-            logging.error(f"Failed to delete external profile: {e}")
-            return False
 
 mongo_service = MongoService()

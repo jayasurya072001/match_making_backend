@@ -225,9 +225,6 @@ async def delete_profile(
         if not redis_deleted:
             raise HTTPException(status_code=404, detail="Profile not found in redis")
         
-        # External DB Delete
-        await mongo_service.delete_external_profile(user_id, profile_id)
-
         return {"status": "deleted", "id": profile_id}
     except HTTPException:
         raise
@@ -362,12 +359,9 @@ async def update_profile_attributes(
         
         await redis_service.save_profile(user_id, updated_mongo, embeddings)
         
-        # 4. Update External DB
-        await mongo_service.update_external_profile(user_id, profile_id, update_doc)
-
         return {
             "status": "success", 
-            "message": "Profile updated in Mongo, Redis, and External DB", 
+            "message": "Profile updated in Mongo and Redis", 
             "updated_fields": list(update_doc.keys())
         }
     
