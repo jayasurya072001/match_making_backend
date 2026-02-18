@@ -242,7 +242,8 @@ def mongo_to_api_payload(doc: Dict[str, Any]) -> ProfilePayload:
         tags=doc.get("tags", []),
 
         created_at=doc.get("created_at"),
-        updated_at=doc.get("updated_at"),
+        updated_at = str(doc.get("updated_at")) if doc.get("updated_at") else None
+,
     )
 
 def send_profile(payload: ProfilePayload) -> dict:
