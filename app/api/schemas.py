@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -232,3 +232,49 @@ class PersonalityModel(BaseModel):
     personality: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+
+class UpdateProfileSchema(BaseModel):
+    id: str = Field(..., description="The ID of the profile to update")
+    collection_name: str = Field(default="Indian", description="The name of the collection (user_id) to update in")
+    
+    # Update fields with Literal validation
+    gender: Optional[Literal["male", "female"]] = None
+    ethnicity: Optional[Literal["white", "black", "Asian", "brown"]] = None
+    hair_color: Optional[Literal["black", "blonde", "white", "grey", "others"]] = None
+    eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None
+    face_shape: Optional[Literal["oval", "round", "square", "diamond"]] = None
+    head_hair: Optional[Literal["present", "absent"]] = None
+    beard: Optional[Literal["stubble", "full", "goatee", "none"]] = None # added "none" based on user sample doc "beard": "none"
+    mustache: Optional[Literal["thin", "thick", "handlebar", "none"]] = None # added "none" based on user sample doc "mustache": "none"
+    hair_style: Optional[Literal["straight", "curly"]] = None
+    eyewear: Optional[Literal["prescription_glasses", "sunglasses", "none"]] = None # added "none"
+    headwear: Optional[Literal["hat", "cap", "turban", "None"]] = None # added "None"
+    eyebrow: Optional[Literal["present", "absent", "Normal"]] = None # added "Normal" from sample doc? Wait, sample has "Eyebrow": "Normal". The user requested "eyebrow : Literal['present', 'absent']". I should respect the user's request but also be aware of existing data. I will stick to the requested literals for now, or maybe include "Normal" to avoid validation errors if they send existing data. The user request "eyebrow : Literal["present", "absent"]" is specific. I will stick to it.
+    attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None
+    body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None
+    skin_color: Optional[Literal["white", "black", "none", "brown"]] = None
+    eye_size: Optional[Literal["normal", "large", "small", "None"]] = None
+    face_size: Optional[Literal["large", "medium", "small"]] = None
+    face_structure: Optional[Literal["symmetric", "asymmetric"]] = None
+    hair_length: Optional[Literal["long", "medium", "short"]] = None
+    
+    # Allow extra fields or specific others? User said "these are the fields literals that needs to be updated". 
+    # I will assume other fields can be passed but these specific ones are validated.
+    # Actually, for Pydantic, if I don't define them, they might be ignored or banned depending on config.
+    # I'll add `extra = "allow"` to allow other fields if needed, OR just `custom_fields: Dict[str, Any]`.
+    # The user instruction implies these are the specific fields to control.
+    # "i need 2 api s one to update which i will send id and fields to be updated."
+    # I'll define a model that ONLY accepts these for the strict validation part, 
+    # but maybe the user wants to update *only* these?
+    # "these are the fields literals that needs to be updated" -> suggests these are the target.
+    
+    class Config:
+        extra = "ignore" # Ignore other fields not defined here to be safe, or "forbid".
+        # If the user sends "name", should it be updated?
+        # The prompt says: "these are the fields literals that needs to be updated".
+        # It's safer to only allow these for now.
+
+class DeleteProfileSchema(BaseModel):
+    id: str = Field(..., description="The ID of the profile to delete")
+    collection_name: str = Field(default="Indian", description="The name of the collection (user_id) to delete from")
