@@ -296,8 +296,70 @@ async def get_profile_counts(
             "mongo_count": mongo_count,
             "redis_count": redis_count
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Error getting profile counts for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{user_id}/attributes/{profile_id}", tags=["profile update"])
+async def get_profile_attributes(
+    profile_id: str,
+    user_id: str = Path(..., title="The ID of the user")
+):
+    """
+    Get profile attributes formatted for UpdateProfileSchema.
+    """
+    try:
+        # 1. Fetch from Mongo
+        profile = await mongo_service.get_profile(user_id, profile_id)
+        if not profile:
+             raise HTTPException(status_code=404, detail="Profile not found")
+
+        # 2. Map Mongo fields to Schema fields
+        attributes = {}
+        attributes["id"] = profile_id
+        attributes["collection_name"] = user_id 
+        
+        def get_nested_value(doc, path):
+            keys = path.split(".")
+            val = doc
+            for key in keys:
+                if isinstance(val, dict):
+                    val = val.get(key)
+                else:
+                    return None
+            return val
+
+        for field, mapping in FIELD_MAPPING.items():
+            # Initialize to None to ensure all fields are present in response
+            attributes[field] = None
+            
+            # If mapping is a list, try the first one that exists or specific priority
+            # For 'gender', ["gender", "image_attributes.gender"], we prefer root 'gender' 
+            # or maybe 'image_attributes.gender' if we want to be consistent with other attrs?
+            # Let's try to find a non-None value.
+            val = None
+            if isinstance(mapping, list):
+                for path in mapping:
+                    val = get_nested_value(profile, path)
+                    if val is not None:
+                        break
+            else:
+                val = get_nested_value(profile, mapping)
+            
+            if val is not None:
+                attributes[field] = val
+
+        return {
+            "status": "success",
+            "data": attributes
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error getting profile attributes {profile_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{user_id}/update_attributes", tags=["profile update"])
