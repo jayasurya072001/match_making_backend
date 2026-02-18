@@ -236,7 +236,7 @@ class PersonalityModel(BaseModel):
 
 class UpdateProfileSchema(BaseModel):
     id: str = Field(..., description="The ID of the profile to update")
-    collection_name: str = Field(default="Indian", description="The name of the collection (user_id) to update in")
+    collection_name: str = Field(default="930", description="The name of the collection (user_id) to update in")
     
     # Update fields with Literal validation
     gender: Optional[Literal["Male", "Female"]] = None
