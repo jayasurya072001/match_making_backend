@@ -22,7 +22,21 @@ REGION_MAPPING = {
     "North India": ["Delhi", "Lucknow", "Amritsar", "Kashmir", "Kohima"],
     "South India": ["Chennai", "Kochi", "Mysore", "Vizag", "Coimbatore", "Hyderabad", "Bangalore", "Thiruvananthapuram"],
     "West India": ["Mumbai", "Pune", "Ahmedabad"],
-    "East India": ["Kolkata"]
+    "East India": ["Kolkata"],
+    #we can add states as well as regions since it takes same logic it should map the existing cities as make sure it is case insensitive
+    "Delhi": [ "Delhi" ],
+    "Uttar Pradesh": [ "Lucknow" ],
+    "Punjab": [ "Amritsar" ],
+    "Jammu and Kashmir": [ "Kashmir" ],
+    "Nagaland": [ "Kohima" ],
+    "Tamil Nadu": [ "Chennai", "Coimbatore" ],
+    "Kerala": [ "Kochi", "Thiruvananthapuram" ],
+    "Karnataka": [ "Mysore", "Bangalore" ],
+    "Andhra Pradesh": [ "Vizag" ],
+    "Telangana": [ "Hyderabad" ],
+    "Maharashtra": [ "Mumbai", "Pune" ],
+    "Gujarat": [ "Ahmedabad" ],
+    "West Bengal": [ "Kolkata" ]    
 }
 
 # Reverse mapping to find region from city
