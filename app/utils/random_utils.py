@@ -326,7 +326,8 @@ def strip_json_comments(json_str: str) -> str:
     """
     import re
     # Pattern to match strings, // comments, and /* */ comments
-    pattern = r'("(?:\\.|[^"\\])*")|//.*|/\*.*?\*/'
+    # We use [^\r\n]* instead of .* for // to avoid matching newlines even with re.DOTALL
+    pattern = r'("(?:\\.|[^"\\])*")|//[^\r\n]*|/\*.*?\*/'
     
     def replacer(match):
         # If it's a string, return it as is
