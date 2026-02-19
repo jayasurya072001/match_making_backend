@@ -145,7 +145,7 @@ tools_specific_promtps = {
         2. If user asks multiple values for a same filter then put them in list and return, dont use $in operator -> Correct Output {{'eye_size': ['large', 'small']}}
         3. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
         4. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        5. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
+        5. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"min_age": null, "max_age": null}}.
         6. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
         7. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
             - "25 years old" -> {{"min_age": 25, "max_age": 25}}

@@ -453,12 +453,6 @@ async def search_person_by_name(
     except Exception as e:
         return f"Error: {str(e)}"
 
-
-
-
-
-
-
 def load_recommendations():
     """Load recommendations from the JSON file."""
     try:
@@ -488,22 +482,31 @@ async def get_profile_recommendations(
     and specific search attributes. It returns curated 'visual archetypes' that the user can select 
     to trigger a specific search.
 
-    Map the user's request to the closest archetype. Dont create new archetypes. Use existing archetypes.
+    STRICT MAPPING RULE:
+    - You must ALWAYS map the user's request to ONE of the allowed literals in the `query` argument.
+    - DO NOT create new keywords.
+    - DO NOT return the user's exact words if they don't match the allowed list.
+    - Find the closest semantic match from the allowed list.
 
-    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
-    1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
-       - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
-       - "Modern", "Stylish", "Trendy", "Fashionable", "Western" -> Returns 'Modern/Trendy' archetype.
-       - "Professional", "Corporate", "Working", "Career oriented" -> Returns 'Professional' archetype.
-       - "Traditional", "Orthodox", "Ethnic" -> Returns 'Traditional' archetype.
+    ALLOWED KEYWORDS (Map to these ONLY):
+    models: "traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", 
+    "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", 
+    "graceful", "attractive", "soft_spoken", "royal", "grounded"
+
+    MAPPING EXAMPLES:
+    - "party girl" -> "modern" or "bold"
+    - "working woman" -> "intellectual" or "modern" or "confident"
+    - "family oriented" -> "homely" or "traditional"
+    - "down to earth" -> "simple" or "grounded"
+    - "good looking" -> "attractive" or "beautiful"
+    - "stylish" -> "modern" or "classy"
     
-    2. APPEARANCE DESCRIPTORS (Maps to 'Cute', 'Beautiful'):
+    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms.
        - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
        - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
 
     DO NOT USE THIS TOOL IF:
-    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". 
-      In that case, use `search_profiles` directly.
+    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". In that case, use `search_profiles` directly.
     - The user asks for a specific person by name.
 
     IMPORTANT: 
