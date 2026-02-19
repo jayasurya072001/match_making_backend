@@ -13,7 +13,7 @@ from app.services.kafka_service import kafka_service
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.api.schemas import LLMRequest, SessionSummary, SessionType
-from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt, get_about_agent_prompt
+from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt, get_about_agent_prompt, get_restriction_summary_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
 from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt, normalize_decision_tool, strip_json_comments, try_extract_json_from_error
@@ -44,6 +44,9 @@ class OrchestratorService:
         # Futures for checking request completion
         self._pending: Dict[str, asyncio.Future] = {}
         self._lock = asyncio.Lock()
+        
+        # Whitelist for same-gender matches
+        self._allowed_same_gender_user_ids: set = set()
 
     async def start(self):
         if self.running: return
@@ -58,6 +61,14 @@ class OrchestratorService:
         
         # 3. Start Ping Scheduler
         self._tasks.append(asyncio.create_task(self._ping_loop()))
+        
+        # 4. Load initial whitelist from Mongo
+        try:
+            whitelisted_users = await mongo_service.get_all_whitelisted_users()
+            self._allowed_same_gender_user_ids = set(whitelisted_users)
+            logger.info(f"Loaded {len(whitelisted_users)} whitelisted users from Mongo")
+        except Exception as e:
+            logger.error(f"Failed to load whitelist from Mongo: {e}")
         
         logger.info("OrchestratorService started")
 
@@ -83,6 +94,16 @@ class OrchestratorService:
         await self._mcp_client.__aenter__()
         await self._mcp_client.fetch_all_members()
         logger.info("MCP Initialization Completed")
+
+    async def add_allowed_same_gender_user(self, user_id: str):
+        """Allow a user to match with same-gender profiles."""
+        self._allowed_same_gender_user_ids.add(user_id)
+        logger.info(f"User {user_id} added to same-gender whitelist")
+
+    async def remove_allowed_same_gender_user(self, user_id: str):
+        """Restriction a user from same-gender profiles."""
+        self._allowed_same_gender_user_ids.discard(user_id)
+        logger.info(f"User {user_id} removed from same-gender whitelist")
 
     # --------------------------
     # Messaging Helpers
@@ -199,13 +220,19 @@ class OrchestratorService:
                 decision = "tool"
                 
                 # Execute tool directly with selected filters
-                tool_result_str, tool_args, structured_result = await self._step_tool_execution_direct(
-                    request_id,
-                    user_id,
-                    selected_filters,
-                    selected_tool,
-                    session_id
-                )
+                try:
+                    tool_result_str, tool_args, structured_result = await self._step_tool_execution_direct(
+                        request_id,
+                        user_id,
+                        selected_filters,
+                        selected_tool,
+                        session_id,
+                        user_profile=user_profile
+                    )
+                except ValueError as ve:
+                    logger.info(f"Policy restriction: {ve}")
+                    tool_result_str = f"RESTRICTION: {str(ve)}"
+                    decision = "restriction"
             else:
                 # Normal flow: LLM-driven
                 # 2. Step 1: Check Decision -> "no_tool", "tool_required", "ask_clarification, "inappropriate_block"
@@ -251,16 +278,22 @@ class OrchestratorService:
 
                     if selected_tool:
                         # 4. Refactored Step 3: Tool Execution (Argument Extraction + Call)
-                        tool_result_str, tool_args, structured_result = await self._step_tool_execution(
-                            request_id,
-                            user_id,
-                            query,
-                            history,
-                            session,
-                            selected_tool,
-                            session_id,
-                            image_url=image_url
-                        )
+                        try:
+                            tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                                request_id,
+                                user_id,
+                                query,
+                                history,
+                                session,
+                                selected_tool,
+                                session_id,
+                                image_url=image_url,
+                                user_profile=user_profile
+                            )
+                        except ValueError as ve:
+                            logger.info(f"Policy restriction: {ve}")
+                            tool_result_str = f"RESTRICTION: {str(ve)}"
+                            decision = "restriction" # Special decision for summary
                     else:
                         logger.warning("No tool selected in Step 2, skipping execution")
                 
@@ -277,15 +310,21 @@ class OrchestratorService:
                         selected_tool = decision
                         decision = "tool"  # Normalize decision for summary context
                         
-                        tool_result_str, tool_args, structured_result = await self._step_tool_execution(
-                            request_id,
-                            user_id,
-                            query,
-                            history,
-                            session,
-                            selected_tool,
-                            session_id
-                        )
+                        try:
+                            tool_result_str, tool_args, structured_result = await self._step_tool_execution(
+                                request_id,
+                                user_id,
+                                query,
+                                history,
+                                session,
+                                selected_tool,
+                                session_id,
+                                user_profile=user_profile
+                            )
+                        except ValueError as ve:
+                            logger.info(f"Policy restriction: {ve}")
+                            tool_result_str = f"RESTRICTION: {str(ve)}"
+                            decision = "restriction"
                     else:
                         logger.warning(f"Invalid tool decision received: {decision}")
 
@@ -462,10 +501,10 @@ class OrchestratorService:
 
         return None
     
-    async def _prepare_and_validate_tool_args(self, user_id, session_id, selected_tool, tool_args, tool_list ):
+    async def _prepare_and_validate_tool_args(self, user_id, session_id, selected_tool, tool_args, tool_list, user_profile: Optional[Dict] = None):
         # Merge deterministic state
         final_tool_args = await self._merge_tool_args(
-            user_id, session_id, selected_tool, tool_args
+            user_id, session_id, selected_tool, tool_args, user_profile
         )
 
         tool_meta = self._get_selected_tool_meta(tool_list, selected_tool)
@@ -599,7 +638,7 @@ class OrchestratorService:
         return current_result
 
 
-    async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None, image_url: Optional[str] = None):
+    async def _step_tool_execution(self, request_id: str, user_id: str, query: str, history: List[Dict], session: Any, selected_tool: str, session_id: Optional[str] = None, image_url: Optional[str] = None, user_profile: Optional[Dict] = None):
         """Step 3: Extract args for the SELECTED tool and execute."""
         final_tool_args = {}
         tool_result_str = None
@@ -655,8 +694,9 @@ class OrchestratorService:
             if extracted:
                 logger.info(f"Recovered JSON from error message: {extracted}")
                 try:
-                    tool_args = json.loads(strip_json_comments(extracted))
-                    error = None # Clear error as we recovered
+                    cleaned = strip_json_comments(extracted)
+                    tool_args = json.loads(cleaned)
+                    error = None  # Clear error since we recovered
                 except Exception as parse_err:
                     logger.error(f"Failed to parse recovered JSON: {parse_err}")
 
@@ -665,11 +705,11 @@ class OrchestratorService:
             tool_args = {} # Reset to empty and fill below
         
         if not tool_args:
-             # If strictly no args and no image_url, it might be an issue, but for now log it.
-             # If error exists and not handled above, we might want to log it.
-             logger.info(f"No tool args returned or extraction failed: {resp}")
-             if not isinstance(tool_args, dict):
-                 tool_args = {}
+            # If strictly no args and no image_url, it might be an issue, but for now log it.
+            # If error exists and not handled above, we might want to log it.
+            logger.info(f"No tool args returned or extraction failed: {resp}")
+            if not isinstance(tool_args, dict):
+                tool_args = {}
 
         if isinstance(tool_args, str):
             try:
@@ -687,7 +727,7 @@ class OrchestratorService:
         if tool_args:
             try:
                 final_tool_args = await self._prepare_and_validate_tool_args(
-                    user_id, session_id, selected_tool, tool_args, tool_list
+                    user_id, session_id, selected_tool, tool_args, tool_list, user_profile
                 )
                 
                 logger.info(f"Executing tool {selected_tool} with args {final_tool_args}")
@@ -722,7 +762,7 @@ class OrchestratorService:
             logger.info(f"No tool received from the model due to some reason debug using this {resp}")
         return tool_result_str, final_tool_args, structured_result
 
-    async def _step_tool_execution_direct(self, request_id: str, user_id: str, selected_filters: dict, selected_tool: str, session_id: Optional[str] = None):
+    async def _step_tool_execution_direct(self, request_id: str, user_id: str, selected_filters: dict, selected_tool: str, session_id: Optional[str] = None, user_profile: Optional[Dict] = None):
         """
         Direct tool execution with pre-selected filters (bypass LLM).
         Used when user clicks a filter suggestion.
@@ -735,7 +775,7 @@ class OrchestratorService:
             
             # Prepare and validate tool args
             final_tool_args = await self._prepare_and_validate_tool_args(
-                user_id, session_id, selected_tool, selected_filters, tool_list
+                user_id, session_id, selected_tool, selected_filters, tool_list, user_profile
             )
             
             logger.info(f"Executing tool {selected_tool} with selected filters {final_tool_args}")
@@ -800,6 +840,8 @@ class OrchestratorService:
 
         if decision == 'ask_clarification':
             default_prompt = get_clarification_summary_prompt(formatted_history, personality, session_summary, user_profile,formatted_tool_descriptions)
+        elif decision == 'restriction':
+            default_prompt = get_restriction_summary_prompt(formatted_history, personality, tool_result_str, session_summary, user_profile, formatted_tool_descriptions)
         elif decision == 'tool':
             if structured_result and isinstance(structured_result, dict):
                 is_tool_result_check = len(structured_result.get("docs", [])) > 0
@@ -1103,7 +1145,7 @@ class OrchestratorService:
         )
         metrics_service.record_request_complete(duration=0.0, error=True)
 
-    async def _merge_tool_args(self, user_id: str, session_id: Optional[str], selected_tool: str, new_args: dict) -> dict:
+    async def _merge_tool_args(self, user_id: str, session_id: Optional[str], selected_tool: str, new_args: dict, user_profile: Optional[Dict] = None) -> dict:
         """
         Helper method to merge new tool args with persisted state.
         Returns the final merged dictionary for the SPECIFIC tool.
@@ -1116,6 +1158,18 @@ class OrchestratorService:
         
         # 2. Extract specific tool section
         current_tool_args = full_state.get(selected_tool, {})
+
+        # 🔹 NEW: Gender-Based Matchmaking Restriction (Initial Defaulting)
+        if selected_tool == "search_profiles" and user_profile:
+            user_gender = user_profile.get("gender")
+            if user_gender:
+                user_gender = user_gender.lower()
+                opposite_gender = "female" if user_gender == "male" else "male"
+                
+                # Default to opposite gender if not specified in new extraction AND not in current state
+                if "gender" not in final_tool_args and "gender" not in current_tool_args:
+                    final_tool_args["gender"] = opposite_gender
+                    logger.info(f"Defaulting search gender to {opposite_gender} for {user_gender} user.")
 
         # 🔹 NEW: Normalize page intent
         if "page" in final_tool_args:
@@ -1145,6 +1199,19 @@ class OrchestratorService:
             else:
                 # Update/Add
                 merged[k] = v
+
+        # 🔹 NEW: Enforce Restriction on merged state
+        if selected_tool == "search_profiles" and user_profile:
+            user_gender = user_profile.get("gender")
+            if user_gender:
+                user_gender = user_gender.lower()
+                target_gender = str(merged.get("gender", "")).lower()
+                
+                if target_gender == user_gender:
+                    # Same-gender match attempt
+                    if user_id not in self._allowed_same_gender_user_ids:
+                        logger.warning(f"User {user_id} ({user_gender}) attempted same-gender search for {target_gender}.")
+                        raise ValueError("Same-gender matches are not supported as per our guidelines.")
         
         # 5. Check for Filter Changes (Reset Page)
         # If any attribute changed EXCEPT 'page' or '_reset' or 'user_id', we must reset page to 1.

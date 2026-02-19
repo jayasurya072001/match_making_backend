@@ -728,6 +728,42 @@ IMPORTANT CONTEXT (use only if relevant):
         prompt += f"\n{format_user_profile(user_profile)}\n"
     return prompt
 
+def get_restriction_summary_prompt(
+    history_str: str,
+    personality: str,
+    restriction_msg: str,
+    session_summary: Any = None,
+    user_profile: Dict[str, Any] = None,
+    formatted_tool_descriptions: str = None
+) -> str:
+    prompt = f"""
+{personality}
+
+TASK:
+The user's request violates a matchmaking policy: {restriction_msg}
+
+RESPONSE MODE:
+- Acknowledge the user's intent but explain the guideline kindly.
+- Use the provided RESTRICTION message as the primary reason.
+- Keep the tone helpful and professional.
+- Suggest alternative ways to use the platform (e.g., searching for opposite-gender matches).
+
+GLOBAL RULES:
+- Do NOT mention tools, systems, searches, or databases.
+- Do NOT mention internal tool names.
+- Do NOT explain how the system works internally.
+- 1–2 sentences maximum.
+"""
+
+    if session_summary and session_summary.important_points:
+        prompt += f"""
+IMPORTANT CONTEXT (use only if relevant):
+{session_summary.important_points}\n User Details: {session_summary.user_details}\n
+"""
+    if user_profile:
+        prompt += f"\n{format_user_profile(user_profile)}\n"
+    return prompt
+
 
 def get_base_prompt() -> str:
     return f"""

@@ -319,30 +319,65 @@ def normalize_decision_tool(value):
 
     return {"decision": "no_tool"}
 
+# def strip_json_comments(json_str: str) -> str:
+#     """
+#     Strips // and /* */ comments from a JSON string while being careful 
+#     not to strip comments inside strings.
+#     """
+#     import re
+#     # Pattern to match strings, // comments, and /* */ comments
+#     # We use [^\r\n]* instead of .* for // to avoid matching newlines even with re.DOTALL
+#     pattern = r'("(?:\\.|[^"\\])*")|//[^\r\n]*|/\*.*?\*/'
+    
+#     def replacer(match):
+#         # If it's a string, return it as is
+#         if match.group(1) is not None:
+#             return match.group(1)
+#         # If it's a comment, return empty string
+#         return ""
+    
+#     # We use flags=re.DOTALL for /* */ comments that potentially span multiple lines
+#     cleaned = re.sub(pattern, replacer, json_str, flags=re.DOTALL)
+    
+#     # Also handle some edge cases like trailing commas before closing brackets
+#     cleaned = re.sub(r',\s*([\]}])', r'\1', cleaned)
+    
+#     return cleaned.strip()
+
+# def try_extract_json_from_error(error_msg: str) -> str:
+#     """
+#     Attempts to extract JSON from a parsing error message that contains "Extracted JSON:".
+#     """
+#     if not error_msg or "Extracted JSON:" not in error_msg:
+#         return None
+    
+#     try:
+#         if "Extracted JSON:" in error_msg:
+#             parts = error_msg.split("Extracted JSON:")
+#             json_part = parts[1].strip()
+#             # If it's wrapped in '...', strip them
+#             if json_part.startswith("'") and json_part.endswith("'"):
+#                 json_part = json_part[1:-1]
+#             return json_part
+#     except Exception:
+#         pass
+#     return None
+
 def strip_json_comments(json_str: str) -> str:
     """
     Strips // and /* */ comments from a JSON string while being careful 
     not to strip comments inside strings.
     """
-    import re
-    # Pattern to match strings, // comments, and /* */ comments
-    # We use [^\r\n]* instead of .* for // to avoid matching newlines even with re.DOTALL
-    pattern = r'("(?:\\.|[^"\\])*")|//[^\r\n]*|/\*.*?\*/'
-    
-    def replacer(match):
-        # If it's a string, return it as is
-        if match.group(1) is not None:
-            return match.group(1)
-        # If it's a comment, return empty string
-        return ""
-    
-    # We use flags=re.DOTALL for /* */ comments that potentially span multiple lines
-    cleaned = re.sub(pattern, replacer, json_str, flags=re.DOTALL)
-    
-    # Also handle some edge cases like trailing commas before closing brackets
-    cleaned = re.sub(r',\s*([\]}])', r'\1', cleaned)
-    
-    return cleaned.strip()
+    # Remove // comments (everything after // until end of line)
+    json_str = re.sub(r'//.*', '', json_str)
+
+    # Remove /* */ comments (multiline)
+    json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+
+    # Remove trailing commas before } or ]
+    json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+
+    return json_str.strip()
 
 def try_extract_json_from_error(error_msg: str) -> str:
     """
@@ -350,15 +385,9 @@ def try_extract_json_from_error(error_msg: str) -> str:
     """
     if not error_msg or "Extracted JSON:" not in error_msg:
         return None
-    
-    try:
-        if "Extracted JSON:" in error_msg:
-            parts = error_msg.split("Extracted JSON:")
-            json_part = parts[1].strip()
-            # If it's wrapped in '...', strip them
-            if json_part.startswith("'") and json_part.endswith("'"):
-                json_part = json_part[1:-1]
-            return json_part
-    except Exception:
-        pass
+
+    match = re.search(r'Extracted JSON:\s*(\{.*\})', error_msg, re.DOTALL)
+    if match:
+        return match.group(1)
+
     return None
