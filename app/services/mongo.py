@@ -14,6 +14,7 @@ class MongoService:
         self.accounts_db = self.client[settings.MONGO_ACCOUNTS_DB]
         self.personality_db = self.client[settings.MONGO_PERSONALITY_DB]
         self.matchmaking_profiles_db = self.client[settings.MONGO_MATCHMAKING_PROFILES_DB]
+        self.chat_db = self.client[settings.MONGO_CHAT_DB]
 
     async def check_connection(self):
         try:
@@ -43,7 +44,7 @@ class MongoService:
 
     async def get_user_profile(self, user_id: str, profile_id: str, projection: dict = None):
         collection = self.matchmaking_profiles_db[user_id]
-        return await collection.find_one({"id": profile_id}, projection)
+        return await collection.find_one({"_id": profile_id}, projection)
 
     async def list_profiles(self, user_id: str, skip: int = 0, limit: int = 20, projection: dict = None):
         collection = self.db[user_id]
@@ -246,7 +247,7 @@ class MongoService:
             }
 
         # Check DB
-        collection = self.matchmaking_profiles_db["users"]
+        collection = self.matchmaking_profiles_db[user_id]
         user = await collection.find_one({
             "email": email, 
             "password": password,
@@ -257,7 +258,8 @@ class MongoService:
             return {
                 "user_id": user_id,
                 "name": user.get("name", "Unknown"),
-                "location": user.get("location", "Unknown")
+                "location": user.get("location", "Unknown"),
+                "person_id":user.get("profile_id","Unknown")
             }
         
         return None

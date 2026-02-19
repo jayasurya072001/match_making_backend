@@ -39,6 +39,7 @@ async def login(
     """
     Login API to authenticate users against hardcoded or database credentials.
     """
+    logging.info(f"Reciever {email} {password} {user_id}")
     try:
         user_details = await mongo_service.verify_user_login(user_id, email, password)
         
