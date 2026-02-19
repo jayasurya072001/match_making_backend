@@ -54,14 +54,20 @@ async def startup_event():
         logger.error(f"❌ Kafka/Orchestrator Startup Failed: {e}")
     
     if exit_check:
+        logger.error("❌ Exiting Application")
+        await shutdown_event()
         sys.exit()
 
 @app.on_event("shutdown")
 async def shutdown_event():
+    logger.info("Shutting down application...")
     await kafka_service.stop()
     await orchestrator_service.stop()
+    await redis_service.close()
 
 app.include_router(router, prefix="/api/v1")
+from app.api.monitoring import router as monitoring_router
+app.include_router(monitoring_router, prefix="/api/v1/monitoring")
 
 @app.get("/")
 async def root():

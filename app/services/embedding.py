@@ -12,8 +12,11 @@ class EmbeddingService:
         self.app.prepare(ctx_id=0, det_size=(640, 640))
 
     async def get_image_from_url(self, url: str) -> np.ndarray:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         async with httpx.AsyncClient() as client:
-            resp = await client.get(url)
+            resp = await client.get(url, headers=headers, follow_redirects=True)
             resp.raise_for_status()
             image_array = np.asarray(bytearray(resp.content), dtype="uint8")
             image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
