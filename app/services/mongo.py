@@ -224,6 +224,7 @@ class MongoService:
         data["_id"] = random_id
         data["profile_id"] = random_id # Also keep as a field for ease
         data["created_at"] = datetime.datetime.utcnow()
+        data["user_id"] = user_id
         
         collection = self.matchmaking_profiles_db[user_id]
         await collection.insert_one(data)
@@ -245,7 +246,7 @@ class MongoService:
             }
 
         # Check DB
-        collection = self.accounts_db["users"]
+        collection = self.matchmaking_profiles_db["users"]
         user = await collection.find_one({
             "email": email, 
             "password": password,
