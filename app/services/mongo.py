@@ -13,6 +13,7 @@ class MongoService:
         self.db = self.client[settings.MONGO_DB_NAME]
         self.accounts_db = self.client[settings.MONGO_ACCOUNTS_DB]
         self.personality_db = self.client[settings.MONGO_PERSONALITY_DB]
+        self.matchmaking_profiles_db = self.client[settings.MONGO_MATCHMAKING_PROFILES_DB]
 
     async def check_connection(self):
         try:
@@ -38,6 +39,10 @@ class MongoService:
 
     async def get_profile(self, user_id: str, profile_id: str, projection: dict = None):
         collection = self.db[user_id]
+        return await collection.find_one({"id": profile_id}, projection)
+
+    async def get_user_profile(self, user_id: str, profile_id: str, projection: dict = None):
+        collection = self.matchmaking_profiles_db[user_id]
         return await collection.find_one({"id": profile_id}, projection)
 
     async def list_profiles(self, user_id: str, skip: int = 0, limit: int = 20, projection: dict = None):
@@ -210,6 +215,51 @@ class MongoService:
         collection = self.accounts_db["ui_schemas"]
         result = await collection.delete_one({"user_id": user_id, "id": field_id})
         return result.deleted_count > 0
+
+    # --- Matchmaking Profile Methods ---
+    async def save_matchmaking_profile(self, user_id: str, data: dict):
+        """Save a dynamic matchmaking profile with a random ID."""
+        import uuid
+        random_id = str(uuid.uuid4())
+        data["_id"] = random_id
+        data["profile_id"] = random_id # Also keep as a field for ease
+        data["created_at"] = datetime.datetime.utcnow()
+        
+        collection = self.matchmaking_profiles_db[user_id]
+        await collection.insert_one(data)
+        return random_id
+
+    async def verify_user_login(self, user_id: str, email: str, password: str):
+        """Verify user login against hardcoded and DB credentials."""
+        # Hardcoded users
+        hardcoded_users = {
+            "admin": {"password": "admin@123", "name": "Admin User", "location": "Headquarters"},
+            "test": {"password": "test@123", "name": "Test User", "location": "Test Lab"}
+        }
+
+        if email in hardcoded_users and hardcoded_users[email]["password"] == password:
+            return {
+                "user_id": user_id, 
+                "name": hardcoded_users[email]["name"], 
+                "location": hardcoded_users[email]["location"]
+            }
+
+        # Check DB
+        collection = self.accounts_db["users"]
+        user = await collection.find_one({
+            "email": email, 
+            "password": password,
+            "user_id": user_id
+        })
+
+        if user:
+            return {
+                "user_id": user_id,
+                "name": user.get("name", "Unknown"),
+                "location": user.get("location", "Unknown")
+            }
+        
+        return None
 
     async def bulk_upsert_ui_fields(self, user_id: str, fields_list: list):
         """Bulk upsert multiple UI fields for a user."""

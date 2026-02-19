@@ -302,3 +302,11 @@ class UIFieldUpdateSchema(BaseModel):
     options: Optional[List[str]] = None
     ranges: Optional[Dict[str, Any]] = None
     required: Optional[bool] = None
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., description="User email (e.g., 'admin', 'test')")
+    password: str = Field(..., description="User password")
+    user_id: str = Field(..., description="User ID for multi-tenant isolation")
+
+class MatchmakingProfileRequest(BaseModel):
+    data: Dict[str, Any] = Field(..., description="Dynamic profile data based on UI schemas")

@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     MONGO_CHAT_DB: str
     MONGO_PERSONALITY_DB: str
     MONGO_ACCOUNTS_DB: str
+    MONGO_MATCHMAKING_PROFILES_DB: str
     REDIS_URL: str
     KAFKA_BOOTSTRAP_SERVERS: str
     KAFKA_CHAT_TOPIC: str

@@ -190,8 +190,8 @@ class OrchestratorService:
                     else:
                         # 2. Fetch from Mongo
                         logger.info(f"Cache miss for person profile {person_id}, fetching from Mongo")
-                        projection = {"name": 1, "age": 1, "gender": 1, "address": 1, "country": 1, "tags": 1}
-                        user_profile = await mongo_service.get_profile(user_id, person_id, projection)
+                        projection = {"name": 1, "age": 1, "gender": 1, "address": 1}
+                        user_profile = await mongo_service.get_user_profile(user_id, person_id, projection)
                         
                         if user_profile:
                             # 3. Save to Redis Cache (TTL 1 day)
