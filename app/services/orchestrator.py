@@ -16,7 +16,7 @@ from app.api.schemas import LLMRequest, SessionSummary, SessionType
 from app.services.prompts import get_summary_update_prompt, get_tool_check_prompt, get_tool_selection_prompt, get_tool_args_prompt, format_history_for_prompt, get_no_tool_summary_prompt, get_clarification_summary_prompt, get_base_prompt, get_tool_summary_prompt, get_inappropriate_summary_prompt, get_gibberish_summary_prompt, get_about_agent_prompt
 from app.services.mcp_service import MCPClient
 from app.services.metrics_service import metrics_service
-from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt, normalize_decision_tool
+from app.utils.random_utils import generate_random_id, deep_clean_tool_args, validate_and_clean_tool_args, get_tool_specific_prompt, persona_json_to_system_prompt, normalize_decision_tool, strip_json_comments, try_extract_json_from_error
 from app.utils.filter_suggestions import generate_filter_suggestions
 from app.utils.cache_persona import cache_persona
 from app.services.eleven_labs_audio_gen_service import eleven_labs_audio_gen_service
@@ -507,7 +507,7 @@ class OrchestratorService:
             
             all_ids.append(doc_id)
 
-        if count>4:
+        if count>3:
             seen=True
             
         return seen, all_ids
@@ -649,6 +649,17 @@ class OrchestratorService:
         tool_args = resp.get("tool_args", {})
         error = resp.get("error")
 
+        if error and (not tool_args or isinstance(tool_args, (str, dict))):
+            # Try to recover from error if it contains Extracted JSON
+            extracted = try_extract_json_from_error(error)
+            if extracted:
+                logger.info(f"Recovered JSON from error message: {extracted}")
+                try:
+                    tool_args = json.loads(strip_json_comments(extracted))
+                    error = None # Clear error as we recovered
+                except Exception as parse_err:
+                    logger.error(f"Failed to parse recovered JSON: {parse_err}")
+
         if error and image_url and selected_tool == "search_profiles":
             logger.warning(f"LLM Tool Args extraction failed: {error}, but proceeding because image_url is present.")
             tool_args = {} # Reset to empty and fill below
@@ -662,7 +673,7 @@ class OrchestratorService:
 
         if isinstance(tool_args, str):
             try:
-                tool_args = json.loads(tool_args)
+                tool_args = json.loads(strip_json_comments(tool_args))
             except Exception:
                 logger.error(f"Failed to parse tool_args string: {tool_args}")
                 tool_args = {}

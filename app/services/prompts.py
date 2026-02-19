@@ -70,6 +70,8 @@ def get_tool_selection_prompt(tools_str: str = "", history_str: str = ""):
         - ALWAYS return JSON ONLY.
         - Return the name of the tool in the "selected_tool" field.
         - DO NOT explain your choice.
+        - DO NOT include comments like // or /* */ in the JSON.
+        - Return RAW JSON ONLY. No markdown.
 
         OUTPUT FORMAT (JSON ONLY):
         {{
@@ -108,7 +110,8 @@ def get_tool_args_prompt(selected_tool: str, specific_tool_prompt: str, tool_sch
 
         IMPORTANT:
         - Return RAW JSON ONLY. No markdown, no comments, no explanations.
-        - Do NOT include comments like // in the JSON.
+        - DO NOT include comments like // or /* */ in the JSON.
+        - Any text after // will cause a parsing error.
         
         OUTPUT FORMAT (JSON ONLY)
         {{
