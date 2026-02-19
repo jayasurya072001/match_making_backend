@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Path
-from app.api.schemas import UserProfile, SearchRequest
+from datetime import datetime
+from app.api.schemas import UserProfile, SearchRequest, UpdateProfileSchema
 from app.services.mongo import mongo_service
 from app.services.redis_service import redis_service
 from app.services.embedding import embedding_service
@@ -7,6 +8,29 @@ from app.utils.random_utils import generate_random_id
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Mapping from flat field name to MongoDB dot-notation path
+FIELD_MAPPING = {
+    "gender": ["gender", "image_attributes.gender"], 
+    "ethnicity": "image_attributes.ethnicity",
+    "hair_color": "image_attributes.hair.hair_color",
+    "eye_color": "image_attributes.eye_color",
+    "face_shape": "image_attributes.face_shape",
+    "head_hair": "image_attributes.head_hair",
+    "beard": "image_attributes.beard",
+    "mustache": "image_attributes.mustache",
+    "hair_style": "image_attributes.hair.hair_style",
+    "eyewear": "image_attributes.accessories.eyewear",
+    "headwear": "image_attributes.accessories.headwear",
+    "eyebrow": "image_attributes.facial_features.Eyebrow",
+    "attire": "image_attributes.attire",
+    "body_shape": "image_attributes.body_shape",
+    "skin_color": "image_attributes.skin_color",
+    "eye_size": "image_attributes.eye_size",
+    "face_size": "image_attributes.face_size",
+    "face_structure": "image_attributes.face_structure",
+    "hair_length": "image_attributes.hair_length"
+}
 
 router = APIRouter()
 
@@ -272,6 +296,147 @@ async def get_profile_counts(
             "mongo_count": mongo_count,
             "redis_count": redis_count
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Error getting profile counts for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{user_id}/attributes/{profile_id}", tags=["profile update"])
+async def get_profile_attributes(
+    profile_id: str,
+    user_id: str = Path(..., title="The ID of the user")
+):
+    """
+    Get profile attributes formatted for UpdateProfileSchema.
+    """
+    try:
+        # 1. Fetch from Mongo
+        profile = await mongo_service.get_profile(user_id, profile_id)
+        if not profile:
+             raise HTTPException(status_code=404, detail="Profile not found")
+
+        # 2. Map Mongo fields to Schema fields
+        attributes = {}
+        attributes["id"] = profile_id
+        attributes["collection_name"] = user_id 
+        
+        def get_nested_value(doc, path):
+            keys = path.split(".")
+            val = doc
+            for key in keys:
+                if isinstance(val, dict):
+                    val = val.get(key)
+                else:
+                    return None
+            return val
+
+        for field, mapping in FIELD_MAPPING.items():
+            # Initialize to None to ensure all fields are present in response
+            attributes[field] = None
+            
+            # If mapping is a list, try the first one that exists or specific priority
+            # For 'gender', ["gender", "image_attributes.gender"], we prefer root 'gender' 
+            # or maybe 'image_attributes.gender' if we want to be consistent with other attrs?
+            # Let's try to find a non-None value.
+            val = None
+            if isinstance(mapping, list):
+                for path in mapping:
+                    val = get_nested_value(profile, path)
+                    if val is not None:
+                        break
+            else:
+                val = get_nested_value(profile, mapping)
+            
+            if val is not None:
+                attributes[field] = val
+
+        return {
+            "status": "success",
+            "data": attributes
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error getting profile attributes {profile_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{user_id}/update_attributes", tags=["profile update"])
+async def update_profile_attributes(
+    data: UpdateProfileSchema,
+    user_id: str = Path(..., title="The ID of the user (collection name)")
+):
+    """
+    Update profile attributes with strict Literal validation and sync to Redis.
+    """
+    try:
+        profile_id = data.id
+        # Note: data.collection_name is optional in schema but user_id in path is required. 
+        # We can enforce they match or just use user_id from path which is more RESTful.
+        # If user passes different collection_name in body, we might want to warn or just use path variable.
+        # I will use path variable 'user_id' as the collection target.
+        
+        # Filter out None values and map to Mongo paths
+        update_doc = {}
+        input_data = data.model_dump(exclude_unset=True, exclude={"id", "collection_name"})
+        
+        if not input_data:
+             raise HTTPException(status_code=400, detail="No fields provided for update")
+
+        for field, value in input_data.items():
+            if field in FIELD_MAPPING:
+                mongo_path = FIELD_MAPPING[field]
+                if isinstance(mongo_path, list):
+                    for path in mongo_path:
+                        update_doc[path] = value
+                else:
+                    update_doc[mongo_path] = value
+
+        if not update_doc:
+             raise HTTPException(status_code=400, detail="No valid fields to update")
+
+        logger.info(f"Updating profile attributes for {profile_id} in {user_id}: {update_doc}")
+        
+        # 1. Check existence in Mongo
+        existing_mongo = await mongo_service.get_profile(user_id, profile_id)
+        if not existing_mongo:
+             raise HTTPException(status_code=404, detail=f"Profile {profile_id} not found in MongoDB")
+
+        # 2. Update Mongo
+        await mongo_service.update_profile(user_id, profile_id, update_doc)
+        
+        # 3. Validation/Sync to Redis
+        # Fetch updated document from Mongo to get the Full structure for Redis
+        # logic: get full doc -> convert to string (for Redis schema compatibility if needed) -> save
+        updated_mongo = await mongo_service.get_profile(user_id, profile_id)
+        
+        # Need to handle embeddings. If not changed, use existing.
+        # redis_service.save_profile expects dict and embeddings list
+        embeddings = updated_mongo.get("embeddings", [])
+        
+        # Redis service 'save_profile' usually expects a flat-ish dict or handles it?
+        # looking at 'save_profile' usage in this file: 
+        # await redis_service.save_profile(user_id, profile.model_dump(mode='json'), profile.embeddings)
+        # So it expects the full profile dict.
+        
+        # Convert datetime objects to string for Redis serialization
+        redis_profile_data = updated_mongo.copy()
+        if "created_at" in redis_profile_data and isinstance(redis_profile_data["created_at"], datetime):
+             redis_profile_data["created_at"] = redis_profile_data["created_at"].isoformat()
+        if "updated_at" in redis_profile_data and isinstance(redis_profile_data["updated_at"], datetime):
+             redis_profile_data["updated_at"] = redis_profile_data["updated_at"].isoformat()
+        
+        await redis_service.save_profile(user_id, redis_profile_data, embeddings)
+        
+        return {
+            "status": "success", 
+            "message": "Profile updated in Mongo and Redis", 
+            "updated_fields": list(update_doc.keys())
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error updating profile attributes: {e}")
         raise HTTPException(status_code=500, detail=str(e))

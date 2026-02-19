@@ -6,7 +6,7 @@ import requests
 
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://myuser:mypassword@48.217.49.77:27017/")
 MONGO_DB = os.getenv("MONGO_DB", "face-attributes-matrimony-matches")
-MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "latest_labelling_face_attributes")
+MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "Indian")
 
 API_URL = os.getenv("API_URL", "http://localhost:8000/api/v1/profiles/930/save")
 API_TIMEOUT = 10
@@ -242,7 +242,8 @@ def mongo_to_api_payload(doc: Dict[str, Any]) -> ProfilePayload:
         tags=doc.get("tags", []),
 
         created_at=doc.get("created_at"),
-        updated_at=doc.get("updated_at"),
+        updated_at = str(doc.get("updated_at")) if doc.get("updated_at") else None
+,
     )
 
 def send_profile(payload: ProfilePayload) -> dict:
