@@ -7,6 +7,12 @@ import aiohttp
 from typing import Optional, Tuple, Literal, Union, List
 import json
 import os
+import sys
+
+# Ensure project root is in path for imports to work
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+
+from app.services.celeb_search import get_celebrity_image_pipeline
 
 
 LOGGING_FORMAT = "[%(asctime)s] %(levelname)s %(name)s:%(lineno)d - %(message)s"
@@ -87,9 +93,9 @@ async def search_profiles(
     gender: Optional[
         Union[Literal["male", "female"], List[Literal["male", "female"]]]
     ] = None,
-    age_group: Optional[
-        Union[Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]]
-    ] = None,
+    # age_group: Optional[
+    #     Union[Literal["teen", "adult", "senior"], List[Literal["teen", "adult", "senior"]]]
+    # ] = None,
     ethnicity: Optional[
         Union[Literal["white", "black", "asian", "brown"], List[Literal["white", "black", "asian", "brown"]]]
     ] = None,
@@ -117,15 +123,15 @@ async def search_profiles(
     hair_style: Optional[
         Union[Literal["straight", "curly"], List[Literal["straight", "curly"]]]
     ] = None,
-    emotion: Optional[
-        Union[
-            Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
-            List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]]
-        ]
-    ] = None,
-    fore_head_height: Optional[
-        Union[Literal["low", "high"], List[Literal["low", "high"]]]
-    ] = None,
+    # emotion: Optional[
+    #     Union[
+    #         Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"],
+    #         List[Literal["happy", "sad", "neutral", "angry", "surprised", "romantic"]]
+    #     ]
+    # ] = None,
+    # fore_head_height: Optional[
+    #     Union[Literal["low", "high"], List[Literal["low", "high"]]]
+    # ] = None,
     eyewear: Optional[
         Union[
             Literal["prescription_glasses", "sunglasses"],
@@ -139,11 +145,11 @@ async def search_profiles(
         Union[Literal["present", "absent"], List[Literal["present", "absent"]]]
     ] = None,
     # New Fields
-    mole: Optional[
-        Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
-    ] = None,
-    scars: Optional[str] = None,
-    earrings: Optional[str] = None,
+    # mole: Optional[
+    #     Union[Literal["Normal", "Unibrow"], List[Literal["Normal", "Unibrow"]]]
+    # ] = None,
+    # scars: Optional[str] = None,
+    # earrings: Optional[str] = None,
 
     # attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None,
     attire: Optional[
@@ -155,9 +161,9 @@ async def search_profiles(
     body_shape: Optional[
     Union[Literal["fit", "slim", "fat", "none"], List[Literal["fit", "slim", "fat", "none"]]]
     ] = None,
-    lip_stick: Optional[
-        Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
-    ] = None,
+    # lip_stick: Optional[
+    #     Union[Literal["no", "yes", "none"], List[Literal["no", "yes", "none"]]]
+    # ] = None,
     skin_color: Optional[
         Union[Literal["white", "black", "none", "brown"], List[Literal["white", "black", "none", "brown"]]]
     ] = None,
@@ -253,7 +259,7 @@ async def search_profiles(
     """
         Search and filter people profiles using structured attributes and optional image similarity.
 
-        Use this tool when the user wants to:
+        Use this MCP Function when the user wants to:
         - Find, search, list, or filter people or profiles
         - Apply appearance-based attributes (age, gender, hair, face, emotion, etc.)
         - Filter by location and distance
@@ -265,10 +271,10 @@ async def search_profiles(
         - All filters are OPTIONAL and can be combined
         - Only provided arguments are applied
         - Pagination is controlled using `page` (increment page to get more results)
-        - This tool does NOT perform name-based lookup
+        - This MCP Function does NOT perform name-based lookup
         - `tags` should be a comma-separated string if multiple
 
-        Do NOT use this tool when:
+        Do NOT use this MCP Function when:
         - The user is only chatting or asking general questions
         - The user provides a person’s name (use `search_person_by_name` instead)
         - The input is ambiguous or requires clarification
@@ -280,6 +286,10 @@ async def search_profiles(
 
     # 1. Construct Filters Dict from flattened args
     # We map local args to the SearchFilters schema structure expected by the API
+    
+    # Validate image_url if provided
+    if image_url and not (image_url.startswith("http://") or image_url.startswith("https://")):
+        return "Error: Invalid image_url provided. Please provide a valid HTTP/HTTPS URL."
 
     # Normalize numeric ranges
     age_range = normalize_range(min_age, max_age, 18, 80, int)
@@ -307,7 +317,7 @@ async def search_profiles(
         "gender": gender,
         # We need to construct age filter carefully
         "age": age_range,
-        "age_group": age_group,
+        # "age_group": age_group,
         "ethnicity": ethnicity,
         "face_shape": face_shape,
         "head_hair": head_hair,
@@ -316,19 +326,19 @@ async def search_profiles(
         "hair_color": hair_color,
         "hair_style": hair_style,
         "eye_color": eye_color,
-        "emotion": emotion,
-        "fore_head_height": fore_head_height,
+        # "emotion": emotion,
+        # "fore_head_height": fore_head_height,
         "eyewear": eyewear,
         "headwear": headwear,
         "eyebrow": eyebrow,
         
-        "mole": mole,
-        "scars": scars,
-        "earrings": earrings,
+        # "mole": mole,
+        # "scars": scars,
+        # "earrings": earrings,
         
         "attire": attire,
         "body_shape": body_shape,
-        "lip_stick": lip_stick,
+        # "lip_stick": lip_stick,
         "skin_color": skin_color,
         "eye_size": eye_size,
         "face_size": face_size,
@@ -408,7 +418,7 @@ async def search_person_by_name(
     """
         Search for a specific person by name using text-based matching.
 
-        Use this tool when the user:
+        Use this MCP Function when the user:
         - Mentions a specific person’s name
         - Asks to find someone by name or partial name
         - Wants to look up an individual directly
@@ -418,13 +428,13 @@ async def search_person_by_name(
         - Returns up to `limit` results
         - Does NOT support attribute-based filtering
 
-        Do NOT use this tool when:
+        Do NOT use this MCP Function when:
         - The user wants to filter by appearance, age, gender, or location
         - The user requests browsing or discovery of profiles
         - The user asks for “girls”, “people”, or general profile searches
 
         Notes:
-        - This tool is name-driven ONLY
+        - This MCP Function is name-driven ONLY
         - For discovery or filtering, use `search_profiles`
     """
     try:
@@ -442,9 +452,6 @@ async def search_person_by_name(
         return f"Error calling API: {e.response.text}"
     except Exception as e:
         return f"Error: {str(e)}"
-
-
-
 
 def load_recommendations():
     """Load recommendations from the JSON file."""
@@ -469,36 +476,59 @@ async def get_profile_recommendations(
     gender: Optional[Literal["male", "female"]] = None
 ) -> Any:
     """
-    Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
- 
-    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types")
-    and specific search attributes. It returns curated 'visual archetypes' that the user can select
+     Get generic visual profile recommendations (archetypes) based on subjective descriptions or 'vibes'.
+
+    This tool bridges the gap between vague user requests (e.g. "I want a simple girl", "Show me corporate types") 
+    and specific search attributes. It returns curated 'visual archetypes' that the user can select 
     to trigger a specific search.
- 
-    Map the user's request to the closest archetype. Dont create new archetypes. Use existing archetypes.
- 
-    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms related to:
-    1. LIFESTYLE / VIBE (Maps to 'Homely', 'Professional', 'Modern', 'Traditional'):
-       - "Homely", "Simple", "Down to earth", "Family oriented" -> Returns 'Homely/Simple' archetype.
-       - "Modern", "Stylish", "Trendy", "Fashionable", "Western" -> Returns 'Modern/Trendy' archetype.
-       - "Professional", "Corporate", "Working", "Career oriented" -> Returns 'Professional' archetype.
-       - "Traditional", "Orthodox", "Ethnic" -> Returns 'Traditional' archetype.
+
+    STRICT MAPPING RULE:
+    - You must ALWAYS map the user's request to ONE of the allowed literals in the `query` argument.
+    - DO NOT create new keywords.
+    - DO NOT return the user's exact words if they don't match the allowed list.
+    - Find the closest semantic match from the allowed list.
+
+    ALLOWED KEYWORDS (Map to these ONLY):
+    models: "traditional", "cute", "beautiful", "elegant", "confident", "bold", "romantic", "mysterious", 
+    "cheerful", "serious", "intellectual", "simple", "classy", "modern", "homely", "charming", 
+    "graceful", "attractive", "soft_spoken", "royal", "grounded"
+
+    MAPPING EXAMPLES:
+    - "party girl" -> "modern" or "bold"
+    - "working woman" -> "intellectual" or "modern" or "confident"
+    - "family oriented" -> "homely" or "traditional"
+    - "down to earth" -> "simple" or "grounded"
+    - "good looking" -> "attractive" or "beautiful"
+    - "stylish" -> "modern" or "classy"
     
-    2. APPEARANCE DESCRIPTORS (Maps to 'Cute', 'Beautiful'):
+    USE THIS TOOL WHEN the user's request contains subjective or descriptive terms.
        - "Cute", "Bubbly", "Chocolate boy" -> Returns 'Cute' archetype.
        - "Beautiful", "Handsome", "Good looking", "Pretty", "Dashing" -> Returns 'Beautiful' archetype.
- 
+
     DO NOT USE THIS TOOL IF:
-    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai".
-      In that case, use `search_profiles` directly.
+    - The user provides ONLY specific, objective filters like "Age 24-28", "Height 5'5", "Location Chennai". In that case, use `search_profiles` directly.
     - The user asks for a specific person by name.
- 
-    IMPORTANT AND MANDATORY:
-        If the user query contains any of the following personality or lifestyle tags:
 
-        Party Lover, Nature Lover, Extrovert, Introvert, Explorer, Adventurer, Outdoor Lover, Influencer, Food Lover, Music Lover, Traveler, Gamer, Traditional
+    IMPORTANT: 
+        - Try to map to the search_profile tool as much as possible. If you arent sure, use this tool.
+        - This tool is only used for recommending profiles to the user. 
 
-        Then you MUST call the tool: search_profiles.
+    Follow these rules strictly:
+
+                    1. Do NOT add promotional, descriptive, emotional, or marketing-style language.
+                    2. Do NOT repeat content.
+                    3. Do NOT add extra commentary, explanations, emojis, headings, or formatting.
+                    4. Do NOT include images, links, or example placeholders unless explicitly requested.
+                    5. Do NOT ask follow-up questions unless explicitly required.
+                    6. Do NOT explain which tool you are using.
+                    7. If a backend tool is required, call it silently and return ONLY the final structured output.
+                    8. Return only the exact data or response requested — nothing more.
+                    9. Response like a human not a technicality explaining ROBOT.
+
+                    If the user asks for profiles or data:
+                    - Return structured data only.
+                    - No adjectives, no embellishment, no summaries.
+                    - No duplicated sections.
     """
     target_styles = []
     target_styles.append(query)
@@ -538,120 +568,232 @@ async def get_profile_recommendations(
         "instruction": """You are a Recommendation Agent.
                     Your task is to present predefined profiles to the user and ask them to choose which one matches their type.
                     Rules:
-                    Only use the profiles provided to you.
+                    Always make the user to select maximum of one profile, reply in such a way that the user can only select one profile.
                     Do not create new profiles.
-                    Keep descriptions short (2–3 lines each).
-                    After listing them, ask the user to choose.
-                    After listing them, clearly tell the user they must choose
+                    Do NOT explain or add attributes/descriptions for the profile names.
                     Do not be overly descriptive or explicit.
                     Keep it funny.
-                    Keep the tone friendly and casual."
-                    EXAMPLE: Hey who looks cute for you? choose among these matches.
-                     """
+                    Keep the tone friendly and casual.
+                    """
     }
 
+# @mcp.tool()
+# async def cross_location_visual_search(
+#     user_id: str,
+#     gender: Literal["male", "female"],
+#     source_location: str,
+#     target_location: str,   
+#     limit: int = 5
+# ) -> Any:
+#     """
+#     This MCP Function finds profiles from one location that visually resemble profiles from another location.
+    
+#     It is designed to answer queries like:
+#     1. "I need a kannada boy who looks like west indian"
+#        -> gender="male", source_location="West India", target_location="Karnataka"
+    
+#     2. "Girl in Chennai who looks like girl from Delhi"
+#        -> gender="female", source_location="Delhi", target_location="Chennai"
+
+#     Args:
+#         user_id: The user's ID.
+#         gender: The gender of the person to find (male/female).
+#         source_location: Where to find the reference profile (e.g. "Delhi").
+#         target_location: Where to find the final matches (e.g. "Chennai").
+#         limit: Number of results.
+#     """
+#     logger.info(
+#         f"[CrossLocationVisualSearch] gender={gender}, "
+#         f"source={source_location}, target={target_location}"
+#     )
+
+#     async def geo(location: str):
+#         coords = await geocode_location(location)
+#         if not coords:
+#             return None
+#         lat, lng = coords
+#         return {"latitude": lat, "longitude": lng}
+
+#     async def search(payload: dict):
+#         async with httpx.AsyncClient() as client:
+#             res = await client.post(
+#                 f"{API_BASE_URL}/{user_id}/search",
+#                 json=payload,
+#                 timeout=30
+#             )
+#             res.raise_for_status()
+#             return res.json()
+
+#     try:
+#         # STEP 1 — get ONE reference image from source location
+#         # Use gender filter for reference
+#         source_geo = await geo(source_location)
+
+#         source_payload = {
+#             "filters": {"gender": gender},
+#             "geo_filter": source_geo,
+#             "k": 1   # ✅ only one image
+#         }
+
+#         source_payload = {k: v for k, v in source_payload.items() if v}
+#         source_result = await search(source_payload)
+
+#         source_docs = source_result.get("docs", [])
+#         if not source_docs:
+#             return {
+#                 "message": f"No reference profile found in {source_location}.",
+#                 "docs": []
+#             }
+
+#         reference_image = source_docs[0].get("image_url")
+#         if not reference_image:
+#             return {
+#                 "message": "Reference profile found but image_url is missing.",
+#                 "docs": []
+#             }
+
+#         logger.info(f"[CrossLocationVisualSearch] Reference image: {reference_image}")
+
+#         # STEP 2 — search target location using reference image
+#         # Use gender filter for target
+#         target_geo = await geo(target_location)
+
+#         target_payload = {
+#             "image_url": reference_image,  # ✅ only one image_url
+#             "filters": {"gender": gender},
+#             "geo_filter": target_geo,
+#             "k": limit
+#         }
+
+#         target_payload = {k: v for k, v in target_payload.items() if v}
+#         target_result = await search(target_payload)
+
+#         target_docs = target_result.get("docs", [])
+
+#         return {
+#             "message": f"Profiles in {target_location} visually similar to {source_location}.",
+#             "reference_image": reference_image,
+#             "count": len(target_docs),
+#             "docs": target_docs
+#         }
+
+#     except Exception as e:
+#         logger.exception("Cross-location visual search failed")
+#         return {"error": str(e)}
+
+
+
 @mcp.tool()
-async def cross_location_visual_search(
+async def search_by_celebrity_lookalike(
     user_id: str,
+    celebrity_name: str,
     gender: Literal["male", "female"],
-    source_location: str,
-    target_location: str,   
+    confirmed_image_url: str | None = None,
     limit: int = 5
 ) -> Any:
     """
-    This tool finds profiles from one location that visually resemble profiles from another location.
+    Search for profiles that look like a specific celebrity.
     
-    It is designed to answer queries like:
-    1. "I need a kannada boy who looks like west indian"
-       -> gender="male", source_location="West India", target_location="Karnataka"
-    
-    2. "Girl in Chennai who looks like girl from Delhi"
-       -> gender="female", source_location="Delhi", target_location="Chennai"
+    This is a two-step process:
+    1. First, call with JUST `celebrity_name` and `gender`. This MCP Function will return a celebrity image.
+    2. Ask the user to confirm if the image is correct.
+    3. If confirmed, call this MCP Function AGAIN with `celebrity_name`, `gender`, AND `confirmed_image_url`.
 
+    Use this MCP Function when the user says:
+    - "I want a girl looking like Aishwarya Rai"
+    - "Show me someone who looks like Virat Kohli"
+    
     Args:
-        user_id: The user's ID.
-        gender: The gender of the person to find (male/female).
-        source_location: Where to find the reference profile (e.g. "Delhi").
-        target_location: Where to find the final matches (e.g. "Chennai").
-        limit: Number of results.
+        user_id: The user's ID
+        celebrity_name: Name of the celebrity (e.g. "Brad Pitt")
+        gender: Gender of the profile to find ("male" or "female")
+        confirmed_image_url: URL of the confirmed celebrity image (only for step 2)
+        limit: Number of results to return (default 5)
+
+    Follow these rules strictly:
+
+        -Reply only in 1-2 lines. EX: Is this the celebrity you are looking for??
+        -Do not explain technicality or sound robotic.
+        -You are just clarifying is this the celebrity you are looking for.
+        -Sound human response like human in 1-2 lines.
     """
-    logger.info(
-        f"[CrossLocationVisualSearch] gender={gender}, "
-        f"source={source_location}, target={target_location}"
-    )
+    logger.info(f"Celeb Search: {celebrity_name}, Gender: {gender}, Confirmed: {bool(confirmed_image_url)}")
 
-    async def geo(location: str):
-        coords = await geocode_location(location)
-        if not coords:
-            return None
-        lat, lng = coords
-        return {"latitude": lat, "longitude": lng}
+    # STEP 1: Identify Celebrity & Get Image (if not confirmed yet)
+    if not confirmed_image_url:
+        try:
+            # Run blocking synchronous code in a thread
+            result = await asyncio.to_thread(get_celebrity_image_pipeline, celebrity_name)
+            
+            if not result or "error" in result:
+                return {
+                    "message": f"Could not identify a celebrity named '{celebrity_name}'. Please try a different name.",
+                    "error": result.get("error") if result else "Unknown error"
+                }
+            
+            if not result.get("celebrity"):
+                 return {
+                    "message": f"'{celebrity_name}' does not seem to be a famous public celebrity. This tool works best with famous public figures.",
+                    "is_celebrity": False
+                }
 
-    async def search(payload: dict):
+            image_url = result.get("image_url")
+            corrected_name = result.get("correct_name")
+            
+            if not image_url:
+                 return {
+                    "message": f"Found celebrity '{corrected_name}' but could not find a reference image. Please try another.",
+                    "correct_name": corrected_name
+                }
+
+            # Return image for user confirmation
+            return {
+                "message": f"I found matches for {corrected_name}. Is this the person you are looking for?",
+                "docs": [{
+                    "is_celebrity": True,
+                    "correct_name": corrected_name,
+                    "name": corrected_name,
+                    "image_url": image_url,
+                    "needs_confirmation": True
+                }],
+                "instruction": f"You MUST include the following image URL in your response using markdown: ![{corrected_name}]({image_url}). Do NOT use placeholders. Display the image and ask: 'Is this {corrected_name}?'"
+            }
+
+        except Exception as e:
+            logger.error(f"Celeb identification failed: {e}")
+            return {"error": str(e)}
+
+    # STEP 2: Search with Confirmed Image
+    try:
+        # We reuse the visual search logic but specifically for this flow
+        # We need to construct a payload that uses the image_url to find similar profiles
+        
+        # We'll use the generic search endpoint with image_url
+        payload = {
+            "image_url": confirmed_image_url,
+            "filters": {
+                "gender": gender
+            },
+            "k": limit
+        }
+        
         async with httpx.AsyncClient() as client:
-            res = await client.post(
+            response = await client.post(
                 f"{API_BASE_URL}/{user_id}/search",
                 json=payload,
                 timeout=30
             )
-            res.raise_for_status()
-            return res.json()
-
-    try:
-        # STEP 1 — get ONE reference image from source location
-        # Use gender filter for reference
-        source_geo = await geo(source_location)
-
-        source_payload = {
-            "filters": {"gender": gender},
-            "geo_filter": source_geo,
-            "k": 1   # ✅ only one image
-        }
-
-        source_payload = {k: v for k, v in source_payload.items() if v}
-        source_result = await search(source_payload)
-
-        source_docs = source_result.get("docs", [])
-        if not source_docs:
+            response.raise_for_status()
+            data = response.json()
+            
             return {
-                "message": f"No reference profile found in {source_location}.",
-                "docs": []
+                "message": f"Here are some profiles that look like {celebrity_name}.",
+                "docs": data.get("docs", []),
+                "count": len(data.get("docs", []))
             }
-
-        reference_image = source_docs[0].get("image_url")
-        if not reference_image:
-            return {
-                "message": "Reference profile found but image_url is missing.",
-                "docs": []
-            }
-
-        logger.info(f"[CrossLocationVisualSearch] Reference image: {reference_image}")
-
-        # STEP 2 — search target location using reference image
-        # Use gender filter for target
-        target_geo = await geo(target_location)
-
-        target_payload = {
-            "image_url": reference_image,  # ✅ only one image_url
-            "filters": {"gender": gender},
-            "geo_filter": target_geo,
-            "k": limit
-        }
-
-        target_payload = {k: v for k, v in target_payload.items() if v}
-        target_result = await search(target_payload)
-
-        target_docs = target_result.get("docs", [])
-
-        return {
-            "message": f"Profiles in {target_location} visually similar to {source_location}.",
-            "reference_image": reference_image,
-            "count": len(target_docs),
-            "docs": target_docs
-        }
 
     except Exception as e:
-        logger.exception("Cross-location visual search failed")
+        logger.error(f"Celeb visual search failed: {e}")
         return {"error": str(e)}
 
 

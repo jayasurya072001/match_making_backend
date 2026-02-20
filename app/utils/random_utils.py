@@ -1,4 +1,5 @@
 import secrets
+import re
 
 def generate_random_id(user_id: str) -> str:
     return f"{user_id}-" + "-".join(
@@ -145,7 +146,7 @@ tools_specific_promtps = {
         2. If user asks multiple values for a same filter then put them in list and return, dont use $in operator -> Correct Output {{'eye_size': ['large', 'small']}}
         3. IF the user mentions a NEW attribute (e.g., "also blonde") → Output {{"hair_color": "blonde"}}.
         4. IF the user CHANGES an attribute (e.g., "actually, make it Bangalore") → Output {{"location": "Bangalore"}}.
-        5. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"age_group": null, "min_age": null, "max_age": null}}.
+        5. IF the user REMOVES a filter (e.g., "remove age filter") → Output {{"min_age": null, "max_age": null}}.
         6. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
         7. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
             - "25 years old" -> {{"min_age": 25, "max_age": 25}}
@@ -175,8 +176,39 @@ tools_specific_promtps = {
         - DO NOT include empty strings or defaults.
 
         INVALID OUTPUT EXAMPLES
-        ❌ "tool_args": ["gender=female"]
+        ❌ "tool_args": [filters]
         ❌ "tool_args": {{ ...all previous filters... }}
+    """,
+    "search_by_celebrity_lookalike": """
+        EXTRACTION RULES:
+        1. Extract `celebrity_name` from the user's request.
+        2. Detect `gender`:
+            - "he", "him", "man", "boy", "actor" -> "male"
+            - "she", "her", "woman", "girl", "actress" -> "female"
+            - If not explicit, infer from the celebrity's known gender if possible, or default to most likely.
+        3. HANDLING CONFIRMATION ("Yes", "That's him", "Correct"):
+            - If the user is confirming a previous celebrity image shown by this tool:
+            - Look at the IMMEDIATE PREVIOUS ASSISTANT MESSAGE in history.
+            - FIND THE URL used in that message. It might be in markdown like ![image](url) or just a plain url https://...
+            - EXTRACT THE EXACT URL found in the text.
+            - Set `celebrity_name` = The name mentioned by assistant.
+            - Set `confirmed_image_url` = THE ACTUAL EXTRACTED URL.
+            - Retain `gender` from context.
+            - CRITICAL: DO NOT return placeholders like "<URL_FROM...>" or "URL". You must find the actual https link.
+            - IF NO URL IS FOUND IN THE PREVIOUS ASSISTANT MESSAGE:
+                - IF user input is strictly "Yes", "Ok", "Sure", "Correct" (Ambiguous):
+                    - Set `confirmed_image_url` = `null` (Reset state to avoid loop).
+                - ELSE:
+                    - OMIT `confirmed_image_url` field (Preserve state for filters/pagination).
+        4. HANDLING NEW SEARCH ("I want someone like...", "Show me..."):
+            - If the user is asking for a different celebrity or starting a new search:
+            - Set `confirmed_image_url` to `null` (Must be explicit null to clear previous state).
+        5. OUTPUT JSON:
+            {
+                "celebrity_name": "Name",
+                "gender": "male" | "female",
+                "confirmed_image_url": "https://..." | null
+            }
     """
 }
 
@@ -285,4 +317,78 @@ def normalize_decision_tool(value):
     if isinstance(value, dict):
         return value
 
+
     return {"decision": "no_tool"}
+
+# def strip_json_comments(json_str: str) -> str:
+#     """
+#     Strips // and /* */ comments from a JSON string while being careful 
+#     not to strip comments inside strings.
+#     """
+#     import re
+#     # Pattern to match strings, // comments, and /* */ comments
+#     # We use [^\r\n]* instead of .* for // to avoid matching newlines even with re.DOTALL
+#     pattern = r'("(?:\\.|[^"\\])*")|//[^\r\n]*|/\*.*?\*/'
+    
+#     def replacer(match):
+#         # If it's a string, return it as is
+#         if match.group(1) is not None:
+#             return match.group(1)
+#         # If it's a comment, return empty string
+#         return ""
+    
+#     # We use flags=re.DOTALL for /* */ comments that potentially span multiple lines
+#     cleaned = re.sub(pattern, replacer, json_str, flags=re.DOTALL)
+    
+#     # Also handle some edge cases like trailing commas before closing brackets
+#     cleaned = re.sub(r',\s*([\]}])', r'\1', cleaned)
+    
+#     return cleaned.strip()
+
+# def try_extract_json_from_error(error_msg: str) -> str:
+#     """
+#     Attempts to extract JSON from a parsing error message that contains "Extracted JSON:".
+#     """
+#     if not error_msg or "Extracted JSON:" not in error_msg:
+#         return None
+    
+#     try:
+#         if "Extracted JSON:" in error_msg:
+#             parts = error_msg.split("Extracted JSON:")
+#             json_part = parts[1].strip()
+#             # If it's wrapped in '...', strip them
+#             if json_part.startswith("'") and json_part.endswith("'"):
+#                 json_part = json_part[1:-1]
+#             return json_part
+#     except Exception:
+#         pass
+#     return None
+
+def strip_json_comments(json_str: str) -> str:
+    """
+    Strips // and /* */ comments from a JSON string while being careful 
+    not to strip comments inside strings.
+    """
+    # Remove // comments (everything after // until end of line)
+    json_str = re.sub(r'//.*', '', json_str)
+
+    # Remove /* */ comments (multiline)
+    json_str = re.sub(r'/\*.*?\*/', '', json_str, flags=re.DOTALL)
+
+    # Remove trailing commas before } or ]
+    json_str = re.sub(r',\s*([\]}])', r'\1', json_str)
+
+    return json_str.strip()
+
+def try_extract_json_from_error(error_msg: str) -> str:
+    """
+    Attempts to extract JSON from a parsing error message that contains "Extracted JSON:".
+    """
+    if not error_msg or "Extracted JSON:" not in error_msg:
+        return None
+
+    match = re.search(r'Extracted JSON:\s*(\{.*\})', error_msg, re.DOTALL)
+    if match:
+        return match.group(1)
+
+    return None

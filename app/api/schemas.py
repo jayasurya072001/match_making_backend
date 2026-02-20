@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -202,6 +202,11 @@ class ChatRequestBody(BaseModel):
         description="Optional fillers that needs to be filled while waiting for the response"
     )
 
+    image_url: Optional[str] = Field(
+        None,
+        description="Optional image url to be used for search along with the query"
+    )
+
     recommendation_ids: Optional[List[str]] = Field(
         [],
         description="Optional list of recommendation ids to be injected into the chat context"
@@ -227,3 +232,81 @@ class PersonalityModel(BaseModel):
     personality: Optional[Dict[str, Any]] = None
     created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+
+
+class UpdateProfileSchema(BaseModel):
+    id: str = Field(..., description="The ID of the profile to update")
+    collection_name: str = Field(default="930", description="The name of the collection (user_id) to update in")
+    
+    # Update fields with Literal validation
+    gender: Optional[Literal["Male", "Female"]] = None
+    ethnicity: Optional[Literal["white", "black", "asian", "brown"]] = None
+    hair_color: Optional[Literal["black", "blonde", "white", "grey", "others"]] = None
+    eye_color: Optional[Literal["blue", "green", "grey", "black"]] = None
+    face_shape: Optional[Literal["oval", "round", "square", "diamond"]] = None
+    head_hair: Optional[Literal["present", "absent"]] = None
+    beard: Optional[Literal["stubble", "full", "goatee","clean_shave"]] = None
+    mustache: Optional[Literal["thin", "thick", "handlebar","none"]] = None
+    hair_style: Optional[Literal["straight", "curly","none"]] = None
+    eyewear: Optional[Literal["prescription_glasses", "sunglasses","none"]] = None
+    headwear: Optional[Literal["hat", "cap", "turban","none"]] = None
+    eyebrow: Optional[Literal["present", "absent"]] = None
+    attire: Optional[Literal["casual", "western", "traditional", "formal"]] = None
+    body_shape: Optional[Literal["fit", "slim", "fat", "none"]] = None
+    skin_color: Optional[Literal["white", "black", "none", "brown"]] = None
+    eye_size: Optional[Literal["normal", "large", "small", "none"]] = None
+    face_size: Optional[Literal["large", "medium", "small"]] = None
+    face_structure: Optional[Literal["symmetric", "asymmetric"]] = None
+    hair_length: Optional[Literal["long", "medium", "short","none"]] = None
+    
+    # Allow extra fields or specific others? User said "these are the fields literals that needs to be updated". 
+    # I will assume other fields can be passed but these specific ones are validated.
+    # Actually, for Pydantic, if I don't define them, they might be ignored or banned depending on config.
+    # I'll add `extra = "allow"` to allow other fields if needed, OR just `custom_fields: Dict[str, Any]`.
+    # The user instruction implies these are the specific fields to control.
+    # "i need 2 api s one to update which i will send id and fields to be updated."
+    # I'll define a model that ONLY accepts these for the strict validation part, 
+    # but maybe the user wants to update *only* these?
+    # "these are the fields literals that needs to be updated" -> suggests these are the target.
+    
+    class Config:
+        extra = "ignore" # Ignore other fields not defined here to be safe, or "forbid".
+        # If the user sends "name", should it be updated?
+        # The prompt says: "these are the fields literals that needs to be updated".
+        # It's safer to only allow these for now.
+
+class DeleteProfileSchema(BaseModel):
+    id: str = Field(..., description="The ID of the profile to delete")
+    collection_name: str = Field(default="Indian", description="The name of the collection (user_id) to delete from")
+
+class OnboardingSchema(BaseModel):
+    user_id: str = Field(..., description="The user ID to onboard/update")
+    allowed_same_gender: bool = Field(default=False, description="Whether same-gender matches are allowed")
+
+class UIFieldSchema(BaseModel):
+    user_id: str = Field(..., description="The user ID who owns this field")
+    id: str = Field(..., description="Unique identifier for the field (e.g., '1')")
+    title: str = Field(..., description="Title of the field")
+    question: str = Field(..., description="Question text for the UI")
+    label: str = Field(..., description="Label for the input")
+    type: str = Field(..., description="UI Field type (e.g., 'TEXTBOX', 'DROPDOWN')")
+    options: List[str] = Field(default_factory=list, description="Options for dropdown or radio types")
+    ranges: Dict[str, Any] = Field(default_factory=list, description="Ranges for slider or numeric types")
+    required: bool = Field(default=False, description="Whether the field is required")
+
+class UIFieldUpdateSchema(BaseModel):
+    title: Optional[str] = None
+    question: Optional[str] = None
+    label: Optional[str] = None
+    type: Optional[str] = None
+    options: Optional[List[str]] = None
+    ranges: Optional[Dict[str, Any]] = None
+    required: Optional[bool] = None
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., description="User email (e.g., 'admin', 'test')")
+    password: str = Field(..., description="User password")
+    user_id: str = Field(..., description="User ID for multi-tenant isolation")
+
+class MatchmakingProfileRequest(BaseModel):
+    data: Dict[str, Any] = Field(..., description="Dynamic profile data based on UI schemas")

@@ -6,6 +6,8 @@ class Settings(BaseSettings):
     MONGO_DB_NAME: str
     MONGO_CHAT_DB: str
     MONGO_PERSONALITY_DB: str
+    MONGO_ACCOUNTS_DB: str
+    MONGO_MATCHMAKING_PROFILES_DB: str
     REDIS_URL: str
     KAFKA_BOOTSTRAP_SERVERS: str
     KAFKA_CHAT_TOPIC: str
@@ -20,7 +22,9 @@ class Settings(BaseSettings):
     AZURE_DEPLOYMENT : str
     AZURE_API_KEY : str
     AZURE_API_VERSION : str
+    PERPLEXITY_API_KEY : str
  
+
     class Config:
         env_file = ".env"
 

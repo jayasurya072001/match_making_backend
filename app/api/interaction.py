@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Path, UploadFile, File, Form, HTTPException
 from app.api.schemas import ChatRequestBody
 from app.services.redis_service import redis_service
 from app.services.mongo import mongo_service
 from app.services.orchestrator import orchestrator_service
 from sse_starlette.sse import EventSourceResponse
 from app.services.prompts import get_filler_prompt
+from app.services.blob_storage_uploader_service import blob_storage_uploader_service
 import json
 import logging
 import asyncio
@@ -31,7 +32,8 @@ async def chat_request(
         body.personality_id, 
         body.session_type, 
         body.recommendation_ids,
-        body.selected_filters
+        body.selected_filters,
+        body.image_url
     )
     
     response = {"status": "accepted", "request_id": request_id}
@@ -53,6 +55,46 @@ async def chat_request(
             logger.error(f"Failed to generate filler: {e}")
             
     return response
+
+    return response
+
+@router.post("/{user_id}/request/image", tags=["chat interaction"])
+async def chat_request_with_image(
+    user_id: str = Path(..., title="The ID of the user"),
+    file: UploadFile = File(None),
+    body: str = Form(...)
+):
+    """
+    Initiate a chat request with an optional image file.
+    """
+    try:
+        # Parse JSON body
+        chat_body = ChatRequestBody.model_validate_json(body)
+        
+        # Handle file upload if present
+        if file:
+            content = await file.read()
+            url = blob_storage_uploader_service.upload_file(
+                content, 
+                file.filename, 
+                file.content_type
+            )
+            if url:
+                chat_body.image_url = url
+                logger.info(f"Uploaded image to {url}")
+            else:
+                logger.error("Failed to upload image")
+                # Should we fail or continue without image? 
+                # Let's fail if file was provided but upload failed
+                raise HTTPException(status_code=500, detail="Failed to upload image")
+
+        # Reuse existing logic
+        return await chat_request(chat_body, user_id)
+
+    except Exception as e:
+        logger.exception(f"Error in chat_request_with_image: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/status/{request_id}", tags=["chat interaction"])
 async def chat_status(
