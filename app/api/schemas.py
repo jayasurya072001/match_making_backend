@@ -278,3 +278,35 @@ class UpdateProfileSchema(BaseModel):
 class DeleteProfileSchema(BaseModel):
     id: str = Field(..., description="The ID of the profile to delete")
     collection_name: str = Field(default="Indian", description="The name of the collection (user_id) to delete from")
+
+class OnboardingSchema(BaseModel):
+    user_id: str = Field(..., description="The user ID to onboard/update")
+    allowed_same_gender: bool = Field(default=False, description="Whether same-gender matches are allowed")
+
+class UIFieldSchema(BaseModel):
+    user_id: str = Field(..., description="The user ID who owns this field")
+    id: str = Field(..., description="Unique identifier for the field (e.g., '1')")
+    title: str = Field(..., description="Title of the field")
+    question: str = Field(..., description="Question text for the UI")
+    label: str = Field(..., description="Label for the input")
+    type: str = Field(..., description="UI Field type (e.g., 'TEXTBOX', 'DROPDOWN')")
+    options: List[str] = Field(default_factory=list, description="Options for dropdown or radio types")
+    ranges: Dict[str, Any] = Field(default_factory=list, description="Ranges for slider or numeric types")
+    required: bool = Field(default=False, description="Whether the field is required")
+
+class UIFieldUpdateSchema(BaseModel):
+    title: Optional[str] = None
+    question: Optional[str] = None
+    label: Optional[str] = None
+    type: Optional[str] = None
+    options: Optional[List[str]] = None
+    ranges: Optional[Dict[str, Any]] = None
+    required: Optional[bool] = None
+
+class LoginRequest(BaseModel):
+    email: str = Field(..., description="User email (e.g., 'admin', 'test')")
+    password: str = Field(..., description="User password")
+    user_id: str = Field(..., description="User ID for multi-tenant isolation")
+
+class MatchmakingProfileRequest(BaseModel):
+    data: Dict[str, Any] = Field(..., description="Dynamic profile data based on UI schemas")

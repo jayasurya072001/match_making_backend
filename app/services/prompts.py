@@ -364,14 +364,18 @@ Ask for clarification so you can help correctly.
 Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
 - {formatted_tool_descriptions}
 
+GLOBAL RULES:
+- Do NOT mention tools, systems, searches, or databases
+- Do NOT mention internal tool names (e.g., "search_profiles", "cross_location_visual_search", "get_profile_recommendations")
+- Do NOT explain how the system works internally
+- Do NOT dump raw or structured data
+
 STRICT RULES:
 - Ask exactly ONE short clarification question, not more than one that shouldn't affect or irritate users.
 - Do NOT answer, assume, or guess intent
 - Do NOT give explanations or multiple options
 - Keep it natural, casual, and human
 - If input feels like gibberish or incomplete, politely ask them to repeat
-- NEVER mention internal tool names or technical system details
-- NEVER explain how the matching or search system works
 
 GOOD EXAMPLES:
 - "Could you tell me a bit more about what you’re looking for?"
@@ -421,6 +425,12 @@ You are a dating and matchmaking assistant.
 
 Tools description is provided so that you can suggest the user to ask based on the available tools and thier arguments.
 - {formatted_tool_descriptions}
+
+GLOBAL RULES:
+- Do NOT mention tools, systems, searches, or databases
+- Do NOT mention internal tool names (e.g., "search_profiles", "cross_location_visual_search", "get_profile_recommendations")
+- Do NOT explain how the system works internally
+- Do NOT dump raw or structured data
 
 SCOPE (STRICT — NO EXCEPTIONS):
 You are ONLY allowed to respond to topics directly related to:
@@ -728,6 +738,42 @@ IMPORTANT CONTEXT (use only if relevant):
         prompt += f"\n{format_user_profile(user_profile)}\n"
     return prompt
 
+def get_restriction_summary_prompt(
+    history_str: str,
+    personality: str,
+    restriction_msg: str,
+    session_summary: Any = None,
+    user_profile: Dict[str, Any] = None,
+    formatted_tool_descriptions: str = None
+) -> str:
+    prompt = f"""
+{personality}
+
+TASK:
+The user's request violates a matchmaking policy: {restriction_msg}
+
+RESPONSE MODE:
+- Acknowledge the user's intent but explain the guideline kindly.
+- Use the provided RESTRICTION message as the primary reason.
+- Keep the tone helpful and professional.
+- Suggest alternative ways to use the platform (e.g., searching for opposite-gender matches).
+
+GLOBAL RULES:
+- Do NOT mention tools, systems, searches, or databases.
+- Do NOT mention internal tool names.
+- Do NOT explain how the system works internally.
+- 1–2 sentences maximum.
+"""
+
+    if session_summary and session_summary.important_points:
+        prompt += f"""
+IMPORTANT CONTEXT (use only if relevant):
+{session_summary.important_points}\n User Details: {session_summary.user_details}\n
+"""
+    if user_profile:
+        prompt += f"\n{format_user_profile(user_profile)}\n"
+    return prompt
+
 
 def get_base_prompt() -> str:
     return f"""
@@ -803,6 +849,12 @@ Rules:
 - Keep the response short (1 sentence, max 2).
 - NEVER mention internal tool names or technical details
 
+GLOBAL RULES:
+- Do NOT mention tools, systems, searches, or databases
+- Do NOT mention internal tool names (e.g., "search_profiles", "cross_location_visual_search", "get_profile_recommendations")
+- Do NOT explain how the system works internally
+- Do NOT dump raw or structured data
+
 Tone:
 {personality}
 
@@ -839,6 +891,12 @@ Response guidelines:
 - Keep responses concise, relevant, and aligned with the personality.
 - Use session summary or history only if it adds meaningful context.
 - Mention tools only when relevant to explaining capabilities.
+
+GLOBAL RULES:
+- Do NOT mention tools, systems, searches, or databases
+- Do NOT mention internal tool names (e.g., "search_profiles", "cross_location_visual_search", "get_profile_recommendations")
+- Do NOT explain how the system works internally
+- Do NOT dump raw or structured data
 
 Personality (primary source of agent information):
 {personality}
