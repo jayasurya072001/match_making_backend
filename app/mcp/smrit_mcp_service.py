@@ -731,6 +731,7 @@ async def search_by_celebrity_lookalike(
                 "docs": [{
                     "is_celebrity": True,
                     "correct_name": corrected_name,
+                    "name": corrected_name,
                     "image_url": image_url,
                     "needs_confirmation": True
                 }],

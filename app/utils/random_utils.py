@@ -1,4 +1,5 @@
 import secrets
+import re
 
 def generate_random_id(user_id: str) -> str:
     return f"{user_id}-" + "-".join(
