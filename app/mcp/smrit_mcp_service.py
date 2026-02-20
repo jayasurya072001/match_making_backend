@@ -512,6 +512,23 @@ async def get_profile_recommendations(
     IMPORTANT: 
         - Try to map to the search_profile tool as much as possible. If you arent sure, use this tool.
         - This tool is only used for recommending profiles to the user. 
+
+    Follow these rules strictly:
+
+                    1. Do NOT add promotional, descriptive, emotional, or marketing-style language.
+                    2. Do NOT repeat content.
+                    3. Do NOT add extra commentary, explanations, emojis, headings, or formatting.
+                    4. Do NOT include images, links, or example placeholders unless explicitly requested.
+                    5. Do NOT ask follow-up questions unless explicitly required.
+                    6. Do NOT explain which tool you are using.
+                    7. If a backend tool is required, call it silently and return ONLY the final structured output.
+                    8. Return only the exact data or response requested — nothing more.
+                    9. Response like a human not a technicality explaining ROBOT.
+
+                    If the user asks for profiles or data:
+                    - Return structured data only.
+                    - No adjectives, no embellishment, no summaries.
+                    - No duplicated sections.
     """
     target_styles = []
     target_styles.append(query)
@@ -692,6 +709,13 @@ async def search_by_celebrity_lookalike(
         gender: Gender of the profile to find ("male" or "female")
         confirmed_image_url: URL of the confirmed celebrity image (only for step 2)
         limit: Number of results to return (default 5)
+
+    Follow these rules strictly:
+
+        -Reply only in 1-2 lines. EX: Is this the celebrity you are looking for??
+        -Do not explain technicality or sound robotic.
+        -You are just clarifying is this the celebrity you are looking for.
+        -Sound human response like human in 1-2 lines.
     """
     logger.info(f"Celeb Search: {celebrity_name}, Gender: {gender}, Confirmed: {bool(confirmed_image_url)}")
 
