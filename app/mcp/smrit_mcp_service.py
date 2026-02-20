@@ -736,6 +736,7 @@ async def search_by_celebrity_lookalike(
         -Reply only in 1-2 lines. EX: Is this the celebrity you are looking for??
         -Do not explain technicality or sound robotic.
         -You are just clarifying is this the celebrity you are looking for.
+        -Sound human response like human in 1-2 lines.
     """
     logger.info(f"Celeb Search: {celebrity_name}, Gender: {gender}, Confirmed: {bool(confirmed_image_url)}")
 
