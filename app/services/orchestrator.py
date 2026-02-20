@@ -209,6 +209,8 @@ class OrchestratorService:
             
             # Inject recommendation details if provided
             if recommendation_ids:
+                # always set the top recommendation id and send only one remove the rest
+                recommendation_ids = recommendation_ids[:1]
                 query = self._get_recommendation_details(recommendation_ids) + query
 
             # Check if selected_filters is provided (API bypass)
@@ -1160,7 +1162,7 @@ class OrchestratorService:
         current_tool_args = full_state.get(selected_tool, {})
 
         # 🔹 NEW: Gender-Based Matchmaking Restriction (Initial Defaulting)
-        if selected_tool == "search_profiles" and user_profile:
+        if selected_tool in ["search_profiles", "get_profile_recommendations"] and user_profile:
             user_gender = user_profile.get("gender")
             if user_gender:
                 user_gender = user_gender.lower()
