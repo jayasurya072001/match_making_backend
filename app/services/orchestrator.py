@@ -209,6 +209,8 @@ class OrchestratorService:
             
             # Inject recommendation details if provided
             if recommendation_ids:
+                # always set the top recommendation id and send only one remove the rest
+                recommendation_ids = recommendation_ids[:1]
                 query = self._get_recommendation_details(recommendation_ids) + query
 
             # Check if selected_filters is provided (API bypass)
