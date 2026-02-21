@@ -163,7 +163,6 @@ tools_specific_promtps = {
         - Always 1 decimal (5.0, 5.5, 6.0)
         - Convert cm → feet (round to 1 decimal)
         - Convert 5 ft 6 in → 5.5
-
         Logic:
         "5.5 feet" → {"min_height": 5.5, "max_height": 5.5}
         "above 5.5 feet" → {"min_height": 5.6}  (+0.1 mandatory)
@@ -184,7 +183,7 @@ tools_specific_promtps = {
         "above 12 LPA" → {"min_annual_income": 13}  (+1 mandatory)
         "below 20 LPA" → {"max_annual_income": 19}  (-1 mandatory)
         "between 10 and 20 LPA" → {"min_annual_income": 10, "max_annual_income": 20}
-        
+
         PAGINATION RULE:
             - If user asks for "more", "next", "continue":
               - Check conversation history for the last tool call.
