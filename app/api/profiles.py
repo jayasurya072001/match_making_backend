@@ -29,7 +29,8 @@ FIELD_MAPPING = {
     "eye_size": "image_attributes.eye_size",
     "face_size": "image_attributes.face_size",
     "face_structure": "image_attributes.face_structure",
-    "hair_length": "image_attributes.hair_length"
+    "hair_length": "image_attributes.hair_length",
+    "caste": "image_attributes.caste"
 }
 
 router = APIRouter()

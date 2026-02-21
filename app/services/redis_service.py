@@ -102,6 +102,7 @@ class RedisService:
                 TagField("$.image_attributes.profession", as_name="profession"),
                 TagField("$.image_attributes.religion", as_name="religion"),
                 TagField("$.image_attributes.speaking_languages", as_name="speaking_languages"),
+                TagField("$.image_attributes.caste", as_name="caste"),
                 TagField("$.tags", as_name="tags")
             ]
             

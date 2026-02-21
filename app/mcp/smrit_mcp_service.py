@@ -251,6 +251,12 @@ async def search_profiles(
     ] = None,
     # Simple strings/lists but typed as str for MCP simplicity (comma-sep)
     # The prompt actually lists specific options for speaking_languages too but as a list example.
+    caste: Optional[
+        Union[
+            Literal["shaikh", "patel", "maratha", "nair", "lingayat", "agarwal", "vellalar", "mir", "khatri", "vaishya", "khatri sikh", "chettiar", "kachari", "jat sikh", "bhandari", "brahmin", "khan", "buddhist", "syrian christian", "kamma", "parsi", "sheikh", "shwetambar", "naga", "latin catholic", "arora", "vokkaliga", "iyer", "naga christian", "gowda", "syed", "reddy", "bhat", "protestant"],
+            List[Literal["shaikh", "patel", "maratha", "nair", "lingayat", "agarwal", "vellalar", "mir", "khatri", "vaishya", "khatri sikh", "chettiar", "kachari", "jat sikh", "bhandari", "brahmin", "khan", "buddhist", "syrian christian", "kamma", "parsi", "sheikh", "shwetambar", "naga", "latin catholic", "arora", "vokkaliga", "iyer", "naga christian", "gowda", "syed", "reddy", "bhat", "protestant"]]
+        ]
+    ] = None,
     speaking_languages: Optional[Union[Literal["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "marathi", "gujarati", "punjabi", "kashmiri"], List[Literal["english", "hindi", "tamil", "telugu", "kannada", "malayalam", "marathi", "gujarati", "punjabi", "kashmiri"]]]] = None,
     tags: Optional[Union[Literal["party_lover", "nature_lover", "extrovert", "introvert", "explorer", "adventurer", "outdoor_lover", "influencer", "food_lover", "music_lover", "traveler", "gamer", "traditional"], List[Literal["party_lover", "nature_lover", "extrovert", "introvert", "explorer", "adventurer", "outdoor_lover", "influencer", "food_lover", "music_lover", "traveler", "gamer", "traditional"]]]] = None
 
@@ -361,6 +367,7 @@ async def search_profiles(
         "mother_tongue": mother_tongue,
         "profession": profession,
         "religion": religion,
+        "caste": caste,
         "speaking_languages": speaking_languages,
         "tags": tags
 

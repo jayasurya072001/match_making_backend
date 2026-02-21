@@ -100,7 +100,8 @@ mongo_doc = {
       "kannada",
       "english"
     ],
-    "weight": "50"
+    "weight": "50",
+    "caste": "gowda"
   },
   "name": "Kiranmayi",
   "preferences": {
@@ -130,6 +131,7 @@ try:
     print(f"Weight: {attrs.weight} (Type: {type(attrs.weight)})")
     print(f"Income: {attrs.annual_income} (Type: {type(attrs.annual_income)})")
     print(f"Languages: {attrs.speaking_languages}")
+    print(f"Caste: {attrs.caste}")
     print(f"Earrings: {attrs.accessories.earrings}")
     print(f"Mole: {attrs.facial_features.mole}")
     
@@ -138,6 +140,7 @@ try:
     assert attrs.weight == 50
     assert attrs.annual_income == 13
     assert "hindi" in attrs.speaking_languages
+    assert attrs.caste == "gowda"
     assert attrs.accessories.earrings == "Gold"
     
     print("All assertions passed.")

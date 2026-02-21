@@ -99,6 +99,7 @@ class ImageAttributes(BaseModel):
     profession: Optional[str]
     religion: Optional[str]
     speaking_languages: List[str] = []
+    caste: Optional[str] = None
 
 
 class Samples(BaseModel):
@@ -237,6 +238,7 @@ def mongo_to_api_payload(doc: Dict[str, Any]) -> ProfilePayload:
             "religion": doc["image_attributes"].get("religion"),
             
             "speaking_languages": doc["image_attributes"].get("speaking_languages", []),
+            "caste": doc["image_attributes"].get("caste"),
         },
 
         tags=doc.get("tags", []),

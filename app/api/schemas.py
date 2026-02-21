@@ -78,6 +78,7 @@ class ImageAttributes(BaseModel):
     
     # Lists
     speaking_languages: List[str] = []
+    caste: Optional[str] = None
 
 class Preferences(BaseModel):
     chat_style: List[str] = []
@@ -258,6 +259,7 @@ class UpdateProfileSchema(BaseModel):
     face_size: Optional[Literal["large", "medium", "small"]] = None
     face_structure: Optional[Literal["symmetric", "asymmetric"]] = None
     hair_length: Optional[Literal["long", "medium", "short","none"]] = None
+    caste: Optional[Literal["shaikh", "patel", "maratha", "nair", "lingayat", "agarwal", "vellalar", "mir", "khatri", "vaishya", "khatri sikh", "chettiar", "kachari", "jat sikh", "bhandari", "brahmin", "khan", "buddhist", "syrian christian", "kamma", "parsi", "sheikh", "shwetambar", "naga", "latin catholic", "arora", "vokkaliga", "iyer", "naga christian", "gowda", "syed", "reddy", "bhat", "protestant"]] = None
     
     # Allow extra fields or specific others? User said "these are the fields literals that needs to be updated". 
     # I will assume other fields can be passed but these specific ones are validated.
