@@ -150,13 +150,40 @@ tools_specific_promtps = {
         6. IF the user says "reset everything" or "start over" → Output {{"_reset": true}}.
         7. IF the user specifies exact age (e.g., "25 years old", "above 20") → Use `min_age` / `max_age`.
             - "25 years old" -> {{"min_age": 25, "max_age": 25}}
-            - "above 20" -> {{"min_age": 20}}
-            - "under 30" -> {{"max_age": 30}}
+            - "above 20" -> {{"min_age": 20+1=21}} (Always add+1 age)(MANDATORY)
+            - "under 30" -> {{"max_age": 30-1=29}} (Always subtract-1 age)(MANDATORY)
             - "between 20 and 30" -> {{"min_age": 20, "max_age": 30}}
         8. WHEN THE USER ASKS FOR MORE MATCHES OR DISLIKES THE CURRENT ONES:
             - Keep all existing user filters and preferences unchanged.
             - Respond as if more options are now available.
             - Never mention pagination, limits, page size, or re-querying.
+        9.HEIGHT RULES (MANDATORY)
+        - Unit: FEET only
+        - Type: FLOAT
+        - Always 1 decimal (5.0, 5.5, 6.0)
+        - Convert cm → feet (round to 1 decimal)
+        - Convert 5 ft 6 in → 5.5
+
+        Logic:
+        "5.5 feet" → {"min_height": 5.5, "max_height": 5.5}
+        "above 5.5 feet" → {"min_height": 5.6}  (+0.1 mandatory)
+        "below 6 feet" → {"max_height": 5.9}  (-0.1 mandatory)
+        "between 5.5 and 6 feet" → {"min_height": 5.5, "max_height": 6.0}
+        10.WEIGHT RULES (kg)
+        "60 kg" → {"min_weight": 60, "max_weight": 60}
+        "above 60 kg" → {"min_weight": 61}  (+1 mandatory)
+        "below 70 kg" → {"max_weight": 69}  (-1 mandatory)
+        "between 60 and 70 kg" → {"min_weight": 60, "max_weight": 70}
+        11.INCOME RULES (MANDATORY)
+        - Unit: LPA only
+        - Type: INTEGER
+        - Never use rupees / commas / 1200000 format
+        - Convert rupees → LPA (1200000 → 12)
+        Logic:
+        "12 LPA" → {"min_annual_income": 12, "max_annual_income": 12}
+        "above 12 LPA" → {"min_annual_income": 13}  (+1 mandatory)
+        "below 20 LPA" → {"max_annual_income": 19}  (-1 mandatory)
+        "between 10 and 20 LPA" → {"min_annual_income": 10, "max_annual_income": 20}
         
         PAGINATION RULE:
             - If user asks for "more", "next", "continue":

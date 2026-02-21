@@ -286,7 +286,7 @@ async def search_profiles(
         - The input is ambiguous or requires clarification
 
         Notes:
-        - Use `min_age` and `max_age` for numeric age constraints
+        - Use `min_age` and `max_age` for numeric age constraints and for exact age use same value for min_age and max_age.
         - Use `page` ONLY when the user asks for more / next results
     """
 
